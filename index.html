@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="VisitasPRO">
+<title>VisitasPRO</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;max-width:480px;margin:0 auto;transition:background .3s,color .3s;}
+input,select,textarea,button{font-family:inherit;}
+
+/* ── LIGHT MODE ── */
+:root{
+  --green:#1D9E75;--green-dark:#0F6E56;--green-light:#E1F5EE;--green-mid:#9FE1CB;
+  --blue-bg:#E6F1FB;--blue-c:#185FA5;--blue-b:#B5D4F4;
+  --red-bg:#FCEBEB;--red-c:#A32D2D;--red-b:#F7C1C1;
+  --amber-bg:#FAEEDA;--amber-c:#854F0B;--amber-b:#FAC775;
+  --green-bg:#EAF3DE;--green-c:#3B6D11;--green-bb:#C0DD97;
+  --border:#e5e7eb;--card:#fff;--text:#1a1a1a;--muted:#6b7280;
+  --bg:#f0f4f1;--surface:#fff;--input-bg:#f8faf9;--header-bg:#fff;--nav-bg:#fff;
+}
+/* ── DARK MODE ── */
+body.dark{
+  --border:#2d3748;--card:#1e2533;--text:#f0f4f8;--muted:#94a3b8;
+  --bg:#111827;--surface:#1e2533;--input-bg:#273044;--header-bg:#161e2e;--nav-bg:#161e2e;
+  --blue-bg:#1a2d4a;--blue-c:#7eb8f7;--blue-b:#2a4a7a;
+  --red-bg:#3b1a1a;--red-c:#f87171;--red-b:#5a2020;
+  --amber-bg:#3b2800;--amber-c:#fbbf24;--amber-b:#5a3a00;
+  --green-bg:#1a3a26;--green-c:#6ee7b7;--green-bb:#1f5c38;
+  --green-light:#1a3a26;--green-mid:#1f5c38;
+}
+body{background:var(--bg);color:var(--text);}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh;}
+#header{background:var(--header-bg);border-bottom:1px solid var(--border);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.logo{font-size:18px;font-weight:700;color:var(--green);letter-spacing:-0.3px;}
+.logo-sub{font-size:10px;color:var(--muted);}
+.header-right{display:flex;align-items:center;gap:8px;}
+#sync-dot{width:8px;height:8px;border-radius:50%;background:#ccc;flex-shrink:0;transition:background .3s;}
+#sync-dot.ok{background:#1D9E75;}#sync-dot.syncing{background:#FAC775;}#sync-dot.err{background:#E24B4A;}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--green-light);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--green-dark);}
+.dark-toggle{background:none;border:1px solid var(--border);border-radius:20px;padding:4px 10px;font-size:12px;cursor:pointer;color:var(--muted);}
+#content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+#nav{background:var(--nav-bg);border-top:1px solid var(--border);display:flex;padding:6px 0 max(8px,env(safe-area-inset-bottom));flex-shrink:0;}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer;padding:4px 0;color:var(--muted);border:none;background:none;}
+.nav-item.active{color:var(--green);}
+.nav-icon{font-size:20px;line-height:1;}.nav-label{font-size:9px;}
+.screen{display:none;padding:16px;}.screen.active{display:block;}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px;}
+@media(min-width:420px){.kpi-grid{grid-template-columns:repeat(3,1fr);}}
+.kpi{border-radius:12px;padding:12px;text-align:center;border:1px solid;}
+.kpi-val{font-size:28px;font-weight:700;}.kpi-lbl{font-size:11px;opacity:0.85;margin-top:2px;}
+.badge{display:inline-block;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:500;border:1px solid;white-space:nowrap;}
+.badge-Realizada{background:var(--green-bg);color:var(--green-c);border-color:var(--green-bb);}
+.badge-Agendada{background:var(--blue-bg);color:var(--blue-c);border-color:var(--blue-b);}
+.badge-Cancelada{background:var(--red-bg);color:var(--red-c);border-color:var(--red-b);}
+.badge-Atrasada{background:var(--amber-bg);color:var(--amber-c);border-color:var(--amber-b);}
+.badge-Reagendada{background:#f3f0ff;color:#7c3aed;border-color:#c4b5fd;}
+.visit-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:13px 14px;margin-bottom:8px;cursor:pointer;}
+.visit-card:active{opacity:0.8;}
+.visit-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;gap:8px;}
+.visit-name{font-weight:500;font-size:14px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.visit-act{font-size:12px;color:var(--muted);margin-bottom:4px;}
+.visit-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);}
+.visit-obs{font-size:11px;color:var(--muted);margin-top:7px;padding:6px 8px;background:var(--input-bg);border-radius:6px;border-left:2px solid var(--green-mid);}
+.form-label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px;margin-top:12px;}
+.form-input{width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border);background:var(--input-bg);font-size:14px;color:var(--text);outline:none;}
+.form-input:focus{border-color:var(--green);}
+.status-pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;}
+.status-pill{padding:6px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;font-size:13px;cursor:pointer;color:var(--muted);}
+.status-pill.active-Realizada{background:var(--green-bg);color:var(--green-c);border-color:var(--green-bb);font-weight:500;}
+.status-pill.active-Agendada{background:var(--blue-bg);color:var(--blue-c);border-color:var(--blue-b);font-weight:500;}
+.status-pill.active-Cancelada{background:var(--red-bg);color:var(--red-c);border-color:var(--red-b);font-weight:500;}
+.status-pill.active-Atrasada{background:var(--amber-bg);color:var(--amber-c);border-color:var(--amber-b);font-weight:500;}
+.btn{width:100%;padding:12px;border-radius:10px;font-size:14px;font-weight:500;cursor:pointer;border:none;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn-primary{background:var(--green);color:#fff;}
+.btn-danger{background:var(--red-bg);color:var(--red-c);border:1px solid var(--red-b)!important;}
+.btn-ghost{background:var(--input-bg);color:var(--muted);border:1px solid var(--border)!important;}
+.btn-whatsapp{background:#25D366;color:#fff;}
+.btn-export{background:var(--green-dark);color:#fff;}
+.btn-add{background:var(--green);color:#fff;border-radius:50%;width:40px;height:40px;font-size:22px;padding:0;flex-shrink:0;border:none;cursor:pointer;}
+.btn:active{opacity:0.85;transform:scale(0.98);}
+.filter-row{display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;}
+.filter-row::-webkit-scrollbar{display:none;}
+.fpill{flex-shrink:0;padding:4px 12px;border-radius:20px;border:1px solid var(--border);background:transparent;font-size:11px;cursor:pointer;color:var(--muted);}
+.fpill.on{background:var(--green);color:#fff;border-color:var(--green-dark);}
+.fpill-blue.on{background:var(--blue-bg);color:var(--blue-c);border-color:var(--blue-b);}
+.row-item{display:flex;align-items:center;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);cursor:pointer;}
+.row-item:active{opacity:0.7;}
+.avatar-sm{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;}
+.row-name{font-size:14px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.row-sub{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.sec-title{font-size:13px;font-weight:500;color:var(--muted);margin:14px 0 8px;}
+.count-lbl{font-size:11px;color:var(--muted);margin-bottom:8px;}
+.search-wrap{padding:10px 16px;border-bottom:1px solid var(--border);background:var(--header-bg);}
+.list-wrap{padding:10px 16px;}
+.chart-wrap{margin-top:6px;overflow-x:auto;}
+.back-btn{background:none;border:none;color:var(--green);font-size:13px;cursor:pointer;padding:0;margin-bottom:14px;display:flex;align-items:center;gap:4px;}
+.detail-row{display:flex;padding:12px 16px;border-bottom:1px solid var(--border);}
+.detail-key{font-size:12px;color:var(--muted);width:90px;flex-shrink:0;}
+.detail-val{font-size:13px;color:var(--text);}
+.prog-wrap{height:4px;background:var(--green-light);border-radius:2px;margin-top:3px;}
+.prog-bar{height:4px;background:var(--green);border-radius:2px;}
+.empty{text-align:center;color:var(--muted);padding:50px 20px;font-size:14px;}
+.search-row{display:flex;gap:8px;align-items:center;}
+.date-row{display:flex;gap:6px;margin-top:8px;align-items:center;}
+.date-row label{font-size:11px;color:var(--muted);flex-shrink:0;}
+.date-row input{flex:1;padding:6px 10px;border-radius:8px;border:1px solid var(--border);background:var(--input-bg);font-size:12px;color:var(--text);}
+/* Notif banner */
+.notif-banner{background:var(--amber-bg);border:1px solid var(--amber-b);border-radius:10px;padding:10px 14px;margin-bottom:12px;cursor:pointer;}
+.notif-banner-today{background:var(--red-bg);border-color:var(--red-b);}
+.notif-title{font-size:12px;font-weight:600;color:var(--amber-c);}
+.notif-banner-today .notif-title{color:var(--red-c);}
+.notif-item{font-size:12px;color:var(--amber-c);margin-top:3px;}
+.notif-banner-today .notif-item{color:var(--red-c);}
+/* Next visit chip */
+.next-chip{display:inline-flex;align-items:center;gap:6px;background:var(--blue-bg);border:1px solid var(--blue-b);border-radius:8px;padding:7px 12px;font-size:12px;color:var(--blue-c);margin-bottom:14px;}
+/* History mini card */
+.hist-card{background:var(--input-bg);border-radius:8px;padding:9px 12px;margin-bottom:6px;}
+.hist-date{font-size:11px;color:var(--muted);}
+.hist-act{font-size:12px;font-weight:500;color:var(--text);}
+.hist-obs{font-size:11px;color:var(--muted);margin-top:3px;font-style:italic;}
+/* Loading */
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:14px;}
+.spinner{width:36px;height:36px;border:3px solid var(--green-light);border-top-color:var(--green);border-radius:50%;animation:spin 0.8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<div id="loading">
+  <div class="spinner"></div>
+  <div style="font-size:15px;font-weight:600;color:var(--green)">VisitasPRO</div>
+  <div style="font-size:12px;color:var(--muted)">Conectando ao banco de dados...</div>
+</div>
+<div id="app" style="display:none">
+  <div id="header">
+    <div>
+      <div class="logo">VisitasPRO</div>
+      <div class="logo-sub" id="hdr-sub">sincronizando...</div>
+    </div>
+    <div class="header-right">
+      <button class="dark-toggle" onclick="toggleDark()" id="dark-btn">🌙</button>
+      <div id="sync-dot" title="Status"></div>
+      <div class="avatar">AC</div>
+    </div>
+  </div>
+  <div id="content">
+    <div id="s-dash" class="screen active" style="padding:16px;"></div>
+    <div id="s-visits" class="screen" style="padding:0;">
+      <div class="search-wrap">
+        <input class="form-input" id="v-search" placeholder="Buscar cliente, atividade..." oninput="renderVisits()">
+        <div class="filter-row" style="margin-top:8px;" id="v-status-filters"></div>
+        <div class="filter-row" style="margin-top:5px;" id="v-func-filters"></div>
+        <div class="date-row">
+          <label>De</label>
+          <input type="date" id="v-date-from" onchange="renderVisits()">
+          <label>Até</label>
+          <input type="date" id="v-date-to" onchange="renderVisits()">
+          <button onclick="clearDates()" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;flex-shrink:0;">limpar</button>
+        </div>
+      </div>
+      <div class="list-wrap" id="v-list"></div>
+    </div>
+    <div id="s-form" class="screen" style="padding:16px;"></div>
+    <div id="s-report" class="screen" style="padding:16px;"></div>
+    <div id="s-clients" class="screen" style="padding:0;">
+      <div class="search-wrap">
+        <div class="search-row">
+          <input class="form-input" id="c-search" placeholder="Buscar cliente ou responsável..." oninput="renderClients()" style="flex:1;">
+          <button class="btn-add" onclick="newClient()">+</button>
+        </div>
+        <div class="count-lbl" id="c-count" style="margin-top:6px;"></div>
+      </div>
+      <div id="c-list" style="padding:0 16px;"></div>
+    </div>
+    <div id="s-cform" class="screen" style="padding:16px;"></div>
+  </div>
+  <div id="nav">
+    <button class="nav-item active" onclick="goTo('dash')" data-tab="dash"><span class="nav-icon">⊟</span><span class="nav-label">Início</span></button>
+    <button class="nav-item" onclick="goTo('visits')" data-tab="visits"><span class="nav-icon">☰</span><span class="nav-label">Visitas</span></button>
+    <button class="nav-item" onclick="newVisit()" data-tab="form"><span class="nav-icon">⊕</span><span class="nav-label">Nova</span></button>
+    <button class="nav-item" onclick="goTo('report')" data-tab="report"><span class="nav-icon">◈</span><span class="nav-label">Relatório</span></button>
+    <button class="nav-item" onclick="goTo('clients')" data-tab="clients"><span class="nav-icon">☺</span><span class="nav-label">Clientes</span></button>
+  </div>
+</div>
+<script>
+// ── FIREBASE ──────────────────────────────────────────────────
+const firebaseConfig={apiKey:"AIzaSyAP3eGk560s22KWpS3wZY_alSC0Kx9quUM",authDomain:"visitaspro-2413a.firebaseapp.com",databaseURL:"https://visitaspro-2413a-default-rtdb.firebaseio.com",projectId:"visitaspro-2413a",storageBucket:"visitaspro-2413a.firebasestorage.app",messagingSenderId:"408385222289",appId:"1:408385222289:web:9022ef9bd15582f1cef130"};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+
+// ── DADOS INICIAIS ────────────────────────────────────────────
+const INITIAL_CLIENTS=[
+{id:1,nome:"Nordeste Serviços",responsavel:"Stenio",telefone:"94992049576",email:"almoxarifado@nordestefs.com.br",obs:""},
+{id:2,nome:"NDT Engenharia",responsavel:"Mykaella",telefone:"94992287216",email:"contasapagar@ndtengenharia.com",obs:""},
+{id:3,nome:"C.A.W Projetos e Consultoria Industrial",responsavel:"Suzy Maria",telefone:"41991654812",email:"",obs:""},
+{id:4,nome:"Vale Carajás",responsavel:"Fernando Bittiol",telefone:"94992095676",email:"fernando.bittiol@vale.com",obs:""},
+{id:5,nome:"Vale S11D",responsavel:"Leidiane Moraes",telefone:"94991614047",email:"leidiane.morais@vale.com",obs:""},
+{id:6,nome:"Vale Sossego",responsavel:"Sirlene",telefone:"94991821477",email:"",obs:""},
+{id:7,nome:"ESCO/WEIR",responsavel:"Wellington",telefone:"94991313055",email:"",obs:""},
+{id:8,nome:"Consórcio Vale",responsavel:"Eder de Carvalho",telefone:"3299287106",email:"",obs:""},
+{id:9,nome:"CBSI",responsavel:"Kleber Miranda",telefone:"9488023091",email:"",obs:""},
+{id:10,nome:"NorteKar",responsavel:"",telefone:"",email:"",obs:""},
+{id:11,nome:"Amazonia Serviços",responsavel:"Maria Antônia",telefone:"94984275637",email:"",obs:""},
+{id:12,nome:"Plangecon",responsavel:"Sales Moura",telefone:"93991801290",email:"",obs:""},
+{id:13,nome:"Bra-Usi",responsavel:"Vitor Flecha",telefone:"91991657775",email:"",obs:""},
+{id:14,nome:"Concreto Blocos",responsavel:"Joice",telefone:"94991944229",email:"",obs:""},
+{id:15,nome:"Hidraucenter",responsavel:"",telefone:"94991710210",email:"",obs:""},
+{id:16,nome:"FX Engenharia e Serviços",responsavel:"Ayla",telefone:"94988075865",email:"",obs:""},
+{id:17,nome:"A Geradora",responsavel:"Luiz",telefone:"",email:"",obs:""},
+{id:18,nome:"DePaula Manutenção",responsavel:"Nathalia",telefone:"94992925875",email:"",obs:""},
+{id:19,nome:"Harpia Centro de Manutenções",responsavel:"Tairis",telefone:"94992201142",email:"",obs:""},
+{id:20,nome:"Detroyt",responsavel:"Valdir",telefone:"94992294955",email:"",obs:""},
+{id:21,nome:"Msoldas",responsavel:"Jankleia",telefone:"94992075948",email:"",obs:""},
+{id:22,nome:"Britaminas",responsavel:"Elizia",telefone:"",email:"",obs:""},
+{id:23,nome:"JG Suprimentos",responsavel:"Rodrigo",telefone:"9991571173",email:"",obs:""},
+{id:24,nome:"Recanorte",responsavel:"Bruno",telefone:"9492327675",email:"",obs:""},
+{id:25,nome:"Opus",responsavel:"Miria",telefone:"9491785422",email:"",obs:""},
+{id:26,nome:"Tecnosonda",responsavel:"Raphael",telefone:"81998743249",email:"",obs:""},
+{id:27,nome:"Marcovel",responsavel:"Ana Lucia",telefone:"94991376890",email:"",obs:""},
+{id:28,nome:"KGR",responsavel:"Talita Oliveira",telefone:"94992940025",email:"",obs:""},
+{id:29,nome:"Virtus",responsavel:"Adailton",telefone:"11941695566",email:"",obs:""},
+{id:30,nome:"Usimig",responsavel:"Lana",telefone:"94992279060",email:"",obs:""},
+{id:31,nome:"JM Engenharia",responsavel:"Cristina",telefone:"94992224364",email:"",obs:""},
+{id:32,nome:"Vale Salobo",responsavel:"Thiago Barbosa",telefone:"94991604910",email:"thiago.ribeiro.barbosa@vale.com",obs:"TSL"},
+{id:33,nome:"Ômega S11D",responsavel:"Evanusia Silva",telefone:"94999036637",email:"",obs:"TST S11D"},
+{id:34,nome:"Portal Temper",responsavel:"Ismael",telefone:"94992374257",email:"",obs:"Comprador"},
+{id:35,nome:"Real Equipamentos",responsavel:"Edenelson",telefone:"",email:"",obs:"Comprador"},
+{id:36,nome:"BS Equipamentos",responsavel:"Klebson",telefone:"",email:"",obs:"Proprietário"},
+{id:37,nome:"Plamont",responsavel:"Luciano",telefone:"2799964-7845",email:"",obs:"Almoxarifado"},
+{id:38,nome:"Alves Ribeiro",responsavel:"Ederson",telefone:"13997116598",email:"",obs:"Engenheiro"},
+{id:39,nome:"Alubar",responsavel:"Rafael",telefone:"",email:"",obs:"Engenheiro"},
+{id:40,nome:"Artemyn",responsavel:"Sergio",telefone:"",email:"",obs:"Engenheiro"},
+{id:41,nome:"Balimax",responsavel:"Luciana",telefone:"",email:"",obs:"TST"},
+];
+const INITIAL_VISITS=[
+{id:1,data:"2025-05-01",funcionario:"Andrei Costa",cliente:"NDT Engenharia",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:2,data:"2025-05-07",funcionario:"Andrei Costa",cliente:"Nordeste Serviços",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue 1 par de Max Solder 10 e um par de Hi Temp 9"},
+{id:3,data:"2025-05-08",funcionario:"Andrei Costa",cliente:"NDT Engenharia",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue 1 par de Max Solder 10 e um par de Hi Temp 9"},
+{id:4,data:"2025-05-09",funcionario:"Andrei Costa",cliente:"C.A.W Projetos e Consultoria Industrial",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue 1 par de Max Defender 9 e 1 par de Master Cut Flex 9"},
+{id:5,data:"2025-05-20",funcionario:"Andrei Costa",cliente:"Vale Carajás",atividade:"Estande dos produtos",status:"Realizada",obs:""},
+{id:6,data:"2025-05-22",funcionario:"Andrei Costa",cliente:"ESCO/WEIR",atividade:"Atendimento com teste",status:"Realizada",obs:""},
+{id:7,data:"2025-05-28",funcionario:"Andrei Costa",cliente:"Nordeste Serviços",atividade:"Retorno teste",status:"Realizada",obs:""},
+{id:8,data:"2025-05-27",funcionario:"Andrei Costa",cliente:"NDT Engenharia",atividade:"Retorno teste",status:"Realizada",obs:""},
+{id:9,data:"2025-05-29",funcionario:"Andrei Costa",cliente:"C.A.W Projetos e Consultoria Industrial",atividade:"Retorno teste",status:"Cancelada",obs:""},
+{id:10,data:"2025-05-23",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:11,data:"2025-05-26",funcionario:"Andrei Costa",cliente:"CBSI",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue 5 pares de Total Power 9"},
+{id:12,data:"2025-05-29",funcionario:"Andrei Costa",cliente:"Consórcio Vale",atividade:"Estande dos produtos",status:"Realizada",obs:""},
+{id:13,data:"2025-05-26",funcionario:"Andrei Costa",cliente:"NorteKar",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue 1 par de Total Power 9"},
+{id:14,data:"2025-06-16",funcionario:"Andrei Costa",cliente:"NorteKar",atividade:"Retorno teste",status:"Realizada",obs:""},
+{id:15,data:"2025-06-03",funcionario:"Andrei Costa",cliente:"Plangecon",atividade:"Atendimento em loja",status:"Realizada",obs:""},
+{id:16,data:"2025-06-05",funcionario:"Andrei Costa",cliente:"Amazonia Serviços",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:17,data:"2025-06-06",funcionario:"Andrei Costa",cliente:"Bra-Usi",atividade:"Atendimento em loja",status:"Cancelada",obs:""},
+{id:18,data:"2025-06-10",funcionario:"Andrei Costa",cliente:"Concreto Blocos",atividade:"Atendimento ao escritório",status:"Cancelada",obs:""},
+{id:19,data:"2025-06-10",funcionario:"Andrei Costa",cliente:"NDT Engenharia",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue 1 par de Nitrileve Granulo"},
+{id:20,data:"2025-06-09",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:21,data:"2025-06-17",funcionario:"Andrei Costa",cliente:"Hidraucenter",atividade:"Atendimento ao escritório",status:"Cancelada",obs:""},
+{id:22,data:"2025-06-20",funcionario:"Andrei Costa",cliente:"FX Engenharia e Serviços",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:23,data:"2025-06-16",funcionario:"Andrei Costa",cliente:"A Geradora",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:24,data:"2025-06-17",funcionario:"Andrei Costa",cliente:"DePaula Manutenção",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:25,data:"2025-06-17",funcionario:"Andrei Costa",cliente:"Harpia Centro de Manutenções",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:26,data:"2025-06-20",funcionario:"Andrei Costa",cliente:"Detroyt",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:27,data:"2025-06-23",funcionario:"Andrei Costa",cliente:"Msoldas",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:28,data:"2025-07-02",funcionario:"Andrei Costa",cliente:"Britaminas",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:29,data:"2025-07-02",funcionario:"Andrei Costa",cliente:"Concreto Blocos",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue 1 par de Nitrileve Granulo 9"},
+{id:30,data:"2025-07-03",funcionario:"Andrei Costa",cliente:"NDT Engenharia",atividade:"Atendimento em área",status:"Realizada",obs:"Entregue 1 par de Nitrileve Granulo 9 e 1 par de Vaqueta 9"},
+{id:31,data:"2025-07-04",funcionario:"Andrei Costa",cliente:"JG Suprimentos",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:32,data:"2025-07-09",funcionario:"Andrei Costa",cliente:"Recanorte",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:33,data:"2025-07-08",funcionario:"Andrei Costa",cliente:"Opus",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:34,data:"2025-07-14",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:35,data:"2025-07-22",funcionario:"Andrei Costa",cliente:"Tecnosonda",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue 2 pares de Hytemp e 1 par de Total Power Plus"},
+{id:36,data:"2025-07-24",funcionario:"Andrei Costa",cliente:"Opus",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue 1 par de Max Solder, 1 par de Master Cut Flex e 1 par de Clean Black"},
+{id:37,data:"2025-07-28",funcionario:"Andrei Costa",cliente:"Vale Carajás",atividade:"Atendimento em área",status:"Realizada",obs:""},
+{id:38,data:"2025-08-15",funcionario:"Andrei Costa",cliente:"Plangecon",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue conjunto Max Solder G, Total Power, Max Grip e Max Solder."},
+{id:39,data:"2025-08-04",funcionario:"Andrei Costa",cliente:"Marcovel",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:40,data:"2025-07-31",funcionario:"Andrei Costa",cliente:"ESCO/WEIR",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue 1 par Max Solder 1 par Total Power"},
+{id:41,data:"2025-08-06",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue 1 conjunto Calça com peitoral Vulca M e G"},
+{id:42,data:"2025-08-07",funcionario:"Andrei Costa",cliente:"KGR",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Entregue 1 par Vaqueta e 1 Max Grip"},
+{id:43,data:"2025-08-13",funcionario:"Andrei Costa",cliente:"KGR",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:44,data:"2025-08-07",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Treinamento",status:"Realizada",obs:""},
+{id:45,data:"2025-08-14",funcionario:"Andrei Costa",cliente:"Virtus",atividade:"Atendimento em área",status:"Realizada",obs:""},
+{id:46,data:"2025-08-26",funcionario:"Andrei Costa",cliente:"Vale Carajás",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:47,data:"2025-11-06",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:48,data:"2025-11-06",funcionario:"Andrei Costa",cliente:"Usimig",atividade:"Atendimento ao escritório",status:"Realizada",obs:"2 pares Total Power e 2 pares Light Power para teste."},
+{id:49,data:"2025-11-07",funcionario:"Andrei Costa",cliente:"JM Engenharia",atividade:"Atendimento ao escritório",status:"Realizada",obs:"1 par Max Solder 9 para teste."},
+{id:50,data:"2025-11-24",funcionario:"Andrei Costa",cliente:"Plangecon",atividade:"Estande dos produtos",status:"Realizada",obs:""},
+{id:51,data:"2025-11-19",funcionario:"Andrei Costa",cliente:"JM Engenharia",atividade:"Atendimento com teste",status:"Realizada",obs:"Testar vestimenta de solda."},
+{id:52,data:"2025-11-25",funcionario:"Andrei Costa",cliente:"Usimig",atividade:"Retorno teste",status:"Realizada",obs:""},
+{id:53,data:"2026-01-15",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Cancelada",obs:""},
+{id:54,data:"2026-01-16",funcionario:"Andrei Costa",cliente:"Vale Salobo",atividade:"Atendimento ao escritório",status:"Cancelada",obs:""},
+{id:55,data:"2026-01-23",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Atendimento aos postos"},
+{id:56,data:"2026-01-12",funcionario:"Loja",cliente:"Usimig",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:57,data:"2026-01-26",funcionario:"Andrei Costa",cliente:"Ômega S11D",atividade:"Atendimento em área",status:"Realizada",obs:"DSS com a equipe da Elétrica"},
+{id:58,data:"2026-01-23",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Atendimento Gabriel"},
+{id:59,data:"2026-01-26",funcionario:"Andrei Costa",cliente:"Plangecon",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:60,data:"2026-01-21",funcionario:"Loja",cliente:"Portal Temper",atividade:"Atendimento em área",status:"Realizada",obs:""},
+{id:61,data:"2026-01-26",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Atendimento ao Armazém"},
+{id:62,data:"2026-01-27",funcionario:"Loja",cliente:"Usimig",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:63,data:"2026-02-02",funcionario:"Andrei Costa",cliente:"Ômega S11D",atividade:"Atendimento em área",status:"Realizada",obs:""},
+{id:64,data:"2026-02-02",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Atendimento ao Planejamento de estoque"},
+{id:65,data:"2026-02-05",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Atendimento aos postos de epi"},
+{id:66,data:"2026-02-05",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Atendimento ao Planejamento de estoque"},
+{id:67,data:"2026-02-10",funcionario:"Andrei Costa",cliente:"Real Equipamentos",atividade:"Atendimento em loja",status:"Realizada",obs:""},
+{id:68,data:"2026-02-12",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Atendimento a TST Gesyani"},
+{id:69,data:"2026-02-13",funcionario:"Andrei Costa",cliente:"BS Equipamentos",atividade:"Atendimento em loja",status:"Realizada",obs:""},
+{id:70,data:"2026-02-23",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Atendimento Eduarda"},
+{id:71,data:"2026-02-23",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Atendimento Aramezém"},
+{id:72,data:"2026-02-27",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Atendimento Aramezém"},
+{id:73,data:"2026-03-04",funcionario:"Andrei Costa",cliente:"Plamont",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Entregue um par Power Chemical 10"},
+{id:74,data:"2026-03-12",funcionario:"Andrei Costa",cliente:"ESCO/WEIR",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:75,data:"2026-03-16",funcionario:"Andrei Costa",cliente:"Alves Ribeiro",atividade:"Atendimento em área",status:"Realizada",obs:""},
+{id:76,data:"2026-03-17",funcionario:"Andrei Costa",cliente:"Alubar",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:77,data:"2026-03-17",funcionario:"Andrei Costa",cliente:"Artemyn",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Entregue 2 pares Clean Black e 1 Max Grip"},
+{id:78,data:"2026-03-17",funcionario:"Andrei Costa",cliente:"Balimax",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Entregue um par Max Solder"},
+{id:79,data:"2026-04-06",funcionario:"Andrei Costa",cliente:"Usimig",atividade:"Atendimento em área",status:"Realizada",obs:""},
+{id:80,data:"2026-04-07",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Treinamento",status:"Realizada",obs:""},
+{id:81,data:"2026-04-08",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Treinamento",status:"Realizada",obs:""},
+];
+
+const ACTIVITIES=["Atendimento ao escritório","Atendimento em área","Atendimento com teste","Atendimento em loja","Treinamento","Estande dos produtos","Retorno teste"];
+const EMPLOYEES=["Andrei Costa","Carlos Arruda","Loja"];
+const STATUS_LIST=["Agendada","Realizada","Reagendada","Cancelada","Atrasada"];
+const MESES=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+let visits=[],clients=[];
+let curScreen='dash',curFilterStatus='Todas',curFilterFunc='Todos';
+let curUser=localStorage.getItem('vp_user')||'';
+// Solicitar nome ao abrir se não definido
+function ensureUser(){
+  if(!curUser){
+    curUser=prompt('Qual é o seu nome? (aparecerá nos registros de visita)','') || 'Usuário';
+    localStorage.setItem('vp_user', curUser);
+  }
+}
+let editVisitId=null,editClientId=null,curFormStatus='Agendada';
+let repAno='',repMes='Todos',fbReady=false;
+let darkMode=localStorage.getItem('vp_dark')==='1';
+
+// ── DARK MODE ─────────────────────────────────────────────────
+function applyDark(){
+  document.body.classList.toggle('dark',darkMode);
+  const btn=document.getElementById('dark-btn');
+  if(btn)btn.textContent=darkMode?'☀️':'🌙';
+}
+function toggleDark(){darkMode=!darkMode;localStorage.setItem('vp_dark',darkMode?'1':'0');applyDark();}
+applyDark();
+
+// ── SYNC DOT ──────────────────────────────────────────────────
+function setSyncDot(s){const d=document.getElementById('sync-dot');d.className='';d.classList.add(s);}
+
+// ── FIREBASE HELPERS ──────────────────────────────────────────
+function objToArr(o){if(!o)return[];return Object.entries(o).map(([k,v])=>({...v,_key:k})).sort((a,b)=>a.id-b.id);}
+function arrToObj(a){const o={};a.forEach(x=>o[x.id]=x);return o;}
+function saveVisitItem(v){
+  // Salva ou atualiza UMA visita pelo _key do Firebase
+  setSyncDot('syncing');
+  const key=v._key||db.ref('visits').push().key;
+  const payload={id:v.id,data:v.data,funcionario:v.funcionario,cliente:v.cliente,
+    atividade:v.atividade,status:v.status,obs:v.obs||'',
+    criadoEm:v.criadoEm||new Date().toISOString(),
+    atualizadoEm:new Date().toISOString(),
+    registradoPor:v.registradoPor||curUser};
+  db.ref('visits/'+key).set(payload)
+    .then(()=>setSyncDot('ok')).catch(()=>setSyncDot('err'));
+  return key;
+}
+function deleteVisitItem(key){
+  setSyncDot('syncing');
+  return db.ref('visits/'+key).remove()
+    .then(()=>setSyncDot('ok')).catch(()=>setSyncDot('err'));
+}
+function saveClientItem(cl){
+  setSyncDot('syncing');
+  const key=cl._key||db.ref('clients').push().key;
+  const payload={id:cl.id,nome:cl.nome,responsavel:cl.responsavel||'',
+    telefone:cl.telefone||'',email:cl.email||'',obs:cl.obs||'',
+    criadoEm:cl.criadoEm||new Date().toISOString()};
+  db.ref('clients/'+key).set(payload)
+    .then(()=>setSyncDot('ok')).catch(()=>setSyncDot('err'));
+  return key;
+}
+function deleteClientItem(key){
+  setSyncDot('syncing');
+  return db.ref('clients/'+key).remove()
+    .then(()=>setSyncDot('ok')).catch(()=>setSyncDot('err'));
+}
+// Compatibilidade — mantidas para evitar erros em outros locais
+function saveVisitsFB(){visits.forEach(v=>{if(!v._key)saveVisitItem(v);});}
+function saveClientsFB(){clients.forEach(cl=>{if(!cl._key)saveClientItem(cl);});}
+function nextVisitId(){return visits.length?Math.max(...visits.map(v=>v.id))+1:1;}
+function nextClientId(){return clients.length?Math.max(...clients.map(c=>c.id))+1:1;}
+
+// ── UTILS ─────────────────────────────────────────────────────
+function statusEfetivo(v){
+  // Se agendada e data já passou → mostrar como Atrasada automaticamente
+  if(v.status==='Agendada'&&v.data<today()) return 'Atrasada';
+  return v.status;
+}
+function fmtDate(d){if(!d)return'';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`;}
+function initials(n){return(n||'?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();}
+function today(){return new Date().toISOString().split('T')[0];}
+function tomorrow(){const d=new Date();d.setDate(d.getDate()+1);return d.toISOString().split('T')[0];}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function clearDates(){document.getElementById('v-date-from').value='';document.getElementById('v-date-to').value='';renderVisits();}
+
+// ── NOTIFICAÇÕES ──────────────────────────────────────────────
+function requestNotifPermission(){
+  if('Notification' in window&&Notification.permission==='default'){
+    Notification.requestPermission();
+  }
+}
+function sendNotif(title,body){
+  if('Notification' in window&&Notification.permission==='granted'){
+    new Notification(title,{body,icon:'',badge:''});
+  }
+}
+function checkNotifications(){
+  if(!visits.length)return;
+  const t=today(),tm=tomorrow();
+  const todayVisits=visits.filter(v=>v.data===t&&v.status==='Agendada');
+  const tomorrowVisits=visits.filter(v=>v.data===tm&&v.status==='Agendada');
+  const alerted=JSON.parse(localStorage.getItem('vp_alerted')||'{}');
+  const todayKey='today_'+t,tomorrowKey='tomorrow_'+tm;
+  if(todayVisits.length&&!alerted[todayKey]){
+    sendNotif('📅 Visitas hoje!',todayVisits.map(v=>v.cliente).join(', '));
+    alerted[todayKey]=1;localStorage.setItem('vp_alerted',JSON.stringify(alerted));
+  }
+  if(tomorrowVisits.length&&!alerted[tomorrowKey]){
+    sendNotif('🔔 Visitas amanhã!',tomorrowVisits.map(v=>v.cliente).join(', '));
+    alerted[tomorrowKey]=1;localStorage.setItem('vp_alerted',JSON.stringify(alerted));
+  }
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+function initApp(){
+  let vr=false,cr=false;
+  function check(){
+    if(vr&&cr){
+      document.getElementById('loading').style.display='none';
+      document.getElementById('app').style.display='flex';
+      fbReady=true;
+      ensureUser();
+      requestNotifPermission();
+      checkNotifications();
+      renderDash();updateHeader();
+    }
+  }
+  db.ref('visits').on('value',snap=>{
+    const data=snap.val();
+    if(data)visits=objToArr(data);
+    else if(!vr){visits=JSON.parse(JSON.stringify(INITIAL_VISITS));db.ref('visits').set(arrToObj(visits));}
+    vr=true;setSyncDot('ok');updateHeader();
+    if(fbReady){checkNotifications();if(curScreen==='dash')renderDash();if(curScreen==='visits')renderVisits();if(curScreen==='report')renderReport();}
+    check();
+  },()=>{vr=true;check();});
+  db.ref('clients').on('value',snap=>{
+    const data=snap.val();
+    if(data)clients=objToArr(data);
+    else if(!cr){clients=JSON.parse(JSON.stringify(INITIAL_CLIENTS));db.ref('clients').set(arrToObj(clients));}
+    cr=true;updateHeader();
+    if(fbReady&&curScreen==='clients')renderClients();
+    check();
+  },()=>{cr=true;check();});
+}
+function updateHeader(){const el=document.getElementById('hdr-sub');if(el)el.textContent=`${visits.length} visitas · ${clients.length} clientes`;}
+
+// ── NAV ───────────────────────────────────────────────────────
+function goTo(screen){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('s-'+screen).classList.add('active');
+  const nb=document.querySelector(`[data-tab="${screen}"]`);if(nb)nb.classList.add('active');
+  curScreen=screen;
+  if(screen==='dash')renderDash();
+  if(screen==='visits')renderVisits();
+  if(screen==='report')renderReport();
+  if(screen==='clients'){const si=document.getElementById('c-search');if(si)si.value='';renderClients();}
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────
+function renderDash(){
+  const now=new Date(),t=today(),tm=tomorrow();
+  const counts={Agendada:0,Realizada:0,Reagendada:0,Cancelada:0,Atrasada:0};
+  visits.forEach(v=>{ const se=statusEfetivo(v); counts[se]=(counts[se]||0)+1; });
+  const totalVisits=visits.length;
+  const taxaReal=totalVisits?Math.round((counts.Realizada/totalVisits)*100):0;
+  const todayV=visits.filter(v=>v.data===t&&v.status==='Agendada');
+  const tomorrowV=visits.filter(v=>v.data===tm&&v.status==='Agendada');
+  const upcoming=visits.filter(v=>v.data>=t&&v.status==='Agendada').sort((a,b)=>a.data.localeCompare(b.data)).slice(0,4);
+  const recent=visits.filter(v=>v.status==='Realizada').sort((a,b)=>b.data.localeCompare(a.data)).slice(0,3);
+  const chartData=[];
+  for(let i=5;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const ym=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const mv=visits.filter(v=>v.data.startsWith(ym));
+    chartData.push({label:MESES[d.getMonth()],total:mv.length,real:mv.filter(v=>v.status==='Realizada').length});
+  }
+  const maxV=Math.max(...chartData.map(d=>d.total),1);
+  const barW=34,gap=8,h=60,svgW=chartData.length*(barW+gap)-gap;
+  let bars='';
+  chartData.forEach((d,i)=>{
+    const x=i*(barW+gap),bH=Math.round((d.total/maxV)*h),rH=Math.round((d.real/maxV)*h);
+    bars+=`<rect x="${x}" y="${h-bH}" width="${barW}" height="${bH}" rx="4" fill="#9FE1CB" opacity=".5"/>`;
+    if(rH>0)bars+=`<rect x="${x}" y="${h-rH}" width="${barW}" height="${rH}" rx="4" fill="#1D9E75"/>`;
+    bars+=`<text x="${x+barW/2}" y="${h+13}" text-anchor="middle" font-size="9" fill="#6b7280">${d.label}</text>`;
+    if(d.total>0)bars+=`<text x="${x+barW/2}" y="${h-bH-4}" text-anchor="middle" font-size="9" fill="#0F6E56" font-weight="500">${d.total}</text>`;
+  });
+  // Banners de notificação
+  let notifHtml='';
+  if(todayV.length){notifHtml+=`<div class="notif-banner notif-banner-today" onclick="goTo('visits')"><div class="notif-title">📅 ${todayV.length} visita(s) agendada(s) para HOJE</div>${todayV.map(v=>`<div class="notif-item">• ${esc(v.cliente)} — ${esc(v.atividade)}</div>`).join('')}</div>`;}
+  if(tomorrowV.length){notifHtml+=`<div class="notif-banner" onclick="goTo('visits')"><div class="notif-title">🔔 ${tomorrowV.length} visita(s) agendada(s) para amanhã</div>${tomorrowV.map(v=>`<div class="notif-item">• ${esc(v.cliente)} — ${esc(v.atividade)}</div>`).join('')}</div>`;}
+  let upHtml='';
+  if(upcoming.length){upHtml='<div class="sec-title">Próximas agendadas</div>';upcoming.forEach(v=>{upHtml+=`<div class="row-item"><div class="avatar-sm" style="background:var(--blue-bg);color:var(--blue-c)">${initials(v.cliente)}</div><div style="flex:1;min-width:0"><div class="row-name">${esc(v.cliente)}</div><div class="row-sub">${esc(v.atividade)}</div></div><span style="font-size:11px;color:var(--muted);flex-shrink:0">${fmtDate(v.data)}</span></div>`;});}
+  let recHtml='<div class="sec-title">Últimas realizadas</div>';
+  recent.forEach(v=>{recHtml+=`<div class="row-item"><div class="avatar-sm" style="background:var(--green-bg);color:var(--green-c)">${initials(v.cliente)}</div><div style="flex:1;min-width:0"><div class="row-name">${esc(v.cliente)}</div><div class="row-sub">${esc(v.atividade)}</div></div><span style="font-size:11px;color:var(--muted);flex-shrink:0">${fmtDate(v.data)}</span></div>`;});
+  document.getElementById('s-dash').innerHTML=`
+    <div style="margin-bottom:14px"><div style="font-size:11px;color:var(--muted)">${new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div><div style="font-size:20px;font-weight:700;color:var(--text)">Painel de Controle</div></div>
+    ${notifHtml}
+    <div class="kpi-grid">
+      <div class="kpi" style="background:var(--blue-bg);border-color:var(--blue-b)"><div class="kpi-val" style="color:var(--blue-c)">${counts.Agendada||0}</div><div class="kpi-lbl" style="color:var(--blue-c)">Agendadas</div></div>
+      <div class="kpi" style="background:var(--green-bg);border-color:var(--green-bb)"><div class="kpi-val" style="color:var(--green-c)">${counts.Realizada||0}</div><div class="kpi-lbl" style="color:var(--green-c)">Realizadas</div></div>
+      <div class="kpi" style="background:var(--red-bg);border-color:var(--red-b)"><div class="kpi-val" style="color:var(--red-c)">${counts.Cancelada||0}</div><div class="kpi-lbl" style="color:var(--red-c)">Canceladas</div></div>
+      <div class="kpi" style="background:var(--amber-bg);border-color:var(--amber-b)"><div class="kpi-val" style="color:var(--amber-c)">${counts.Atrasada||0}</div><div class="kpi-lbl" style="color:var(--amber-c)">Atrasadas</div></div>
+      <div class="kpi" style="background:#f3f0ff;border-color:#c4b5fd"><div class="kpi-val" style="color:#7c3aed">${counts.Reagendada||0}</div><div class="kpi-lbl" style="color:#7c3aed">Reagendadas</div></div>
+      <div class="kpi" style="background:var(--green-bg);border-color:var(--green-bb)"><div class="kpi-val" style="color:var(--green-c)">${taxaReal}%</div><div class="kpi-lbl" style="color:var(--green-c)">Taxa Realização</div></div>
+    </div>
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-size:13px;font-weight:500;color:var(--text)">Visitas por mês</span><div style="display:flex;gap:10px;font-size:10px;color:var(--muted)"><span>&#9646; Realizadas</span><span style="opacity:.5">&#9646; Total</span></div></div>
+      <div class="chart-wrap"><svg viewBox="0 0 ${svgW} ${h+18}" width="100%" style="overflow:visible">${bars}</svg></div>
+    </div>
+    ${upHtml}${recHtml}`;
+}
+
+// ── VISITS LIST ───────────────────────────────────────────────
+function renderVisits(){
+  const sfWrap=document.getElementById('v-status-filters');
+  if(!sfWrap.innerHTML){['Todas',...STATUS_LIST].forEach(s=>{const b=document.createElement('button');b.className='fpill'+(s==='Todas'?' on':'');b.textContent=s;b.dataset.s=s;b.onclick=()=>{curFilterStatus=s;document.querySelectorAll('#v-status-filters .fpill').forEach(x=>x.classList.toggle('on',x.dataset.s===s));renderVisits();};sfWrap.appendChild(b);});}
+  const ffWrap=document.getElementById('v-func-filters');
+  if(!ffWrap.innerHTML){['Todos',...EMPLOYEES].forEach(e=>{const b=document.createElement('button');b.className='fpill fpill-blue'+(e==='Todos'?' on':'');b.textContent=e;b.dataset.e=e;b.onclick=()=>{curFilterFunc=e;document.querySelectorAll('#v-func-filters .fpill').forEach(x=>x.classList.toggle('on',x.dataset.e===e));renderVisits();};ffWrap.appendChild(b);});}
+  const q=(document.getElementById('v-search').value||'').toLowerCase();
+  const df=document.getElementById('v-date-from').value;
+  const dt=document.getElementById('v-date-to').value;
+  const filtered=visits.filter(v=>{
+    const ss=curFilterStatus==='Todas'||v.status===curFilterStatus;
+    const ff=curFilterFunc==='Todos'||v.funcionario===curFilterFunc;
+    const qq=!q||v.cliente.toLowerCase().includes(q)||v.atividade.toLowerCase().includes(q)||(v.obs||'').toLowerCase().includes(q);
+    const fd=!df||v.data>=df;
+    const td=!dt||v.data<=dt;
+    return ss&&ff&&qq&&fd&&td;
+  }).sort((a,b)=>b.data.localeCompare(a.data));
+  let html=`<div class="count-lbl">${filtered.length} visita(s)</div>`;
+  if(!filtered.length)html+='<div class="empty">Nenhuma visita encontrada</div>';
+  else filtered.forEach(v=>{const obsH=v.obs?`<div class="visit-obs">${esc(v.obs)}</div>`:'';html+=`<div class="visit-card" onclick="editVisit(${v.id})">
+      <div class="visit-header">
+        <div class="visit-name">${esc(v.cliente)}</div>
+        <span class="badge badge-${statusEfetivo(v)}">${statusEfetivo(v)}</span>
+      </div>
+      <div class="visit-act">${esc(v.atividade)}</div>
+      <div class="visit-meta">
+        <span>👤 ${esc(v.funcionario)}</span>
+        <span>${fmtDate(v.data)} · ${new Date(v.data+'T12:00:00').toLocaleDateString('pt-BR',{weekday:'short'})}</span>
+      </div>
+      ${v.registradoPor?`<div style="font-size:10px;color:var(--muted);margin-top:3px">Registrado por: ${esc(v.registradoPor)}</div>`:''}
+      ${obsH}
+    </div>`;});
+  document.getElementById('v-list').innerHTML=html;
+}
+
+// ── VISIT FORM ────────────────────────────────────────────────
+function renderVisitForm(v){
+  editVisitId=v?v.id:null;curFormStatus=v?v.status:'Agendada';
+  const isEdit=!!v;
+  const clientOpts=clients.slice().sort((a,b)=>a.nome.localeCompare(b.nome)).map(c=>`<option${v&&v.cliente===c.nome?' selected':''}>${esc(c.nome)}</option>`).join('');
+  const actOpts=ACTIVITIES.map(a=>`<option${v&&v.atividade===a?' selected':''}>${esc(a)}</option>`).join('');
+  const empOpts=EMPLOYEES.map(e=>`<option${v&&v.funcionario===e?' selected':''}>${esc(e)}</option>`).join('');
+  const pillsH=STATUS_LIST.map(s=>`<button type="button" class="status-pill${s===curFormStatus?' active-'+s:''}" onclick="setFormStatus('${s}')">${s}</button>`).join('');
+  document.getElementById('s-form').innerHTML=`
+    <div style="font-size:16px;font-weight:600;margin-bottom:16px;color:var(--text)">${isEdit?'Editar Visita':'Nova Visita'}</div>
+    <label class="form-label">Data</label><input type="date" id="f-data" class="form-input" value="${v?v.data:today()}">
+    <label class="form-label">Funcionário</label><select id="f-func" class="form-input">${empOpts}</select>
+    <label class="form-label">Cliente</label><select id="f-client" class="form-input">${clientOpts}</select>
+    <label class="form-label">Atividade</label><select id="f-atv" class="form-input">${actOpts}</select>
+    <label class="form-label">Status</label><div class="status-pills" id="form-pills">${pillsH}</div>
+    <label class="form-label">Observações</label><textarea id="f-obs" class="form-input" rows="3" placeholder="Anotações sobre a visita...">${esc(v?v.obs:'')}</textarea>
+    <div style="margin-top:16px">
+      <button type="button" class="btn btn-primary" onclick="saveVisit()">${isEdit?'Salvar Alterações':'Registrar Visita'}</button>
+      ${isEdit?`<button type="button" class="btn btn-danger" onclick="deleteVisit()">Excluir Visita</button>`:''}
+      <button type="button" class="btn btn-ghost" onclick="goTo('visits')">Cancelar</button>
+    </div>`;
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('s-form').classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  const nb=document.querySelector('[data-tab="form"]');if(nb)nb.classList.add('active');
+}
+function setFormStatus(s){curFormStatus=s;document.getElementById('form-pills').innerHTML=STATUS_LIST.map(st=>`<button type="button" class="status-pill${st===s?' active-'+st:''}" onclick="setFormStatus('${st}')">${st}</button>`).join('');}
+function newVisit(){editVisitId=null;renderVisitForm(null);}
+function editVisit(id){renderVisitForm(visits.find(x=>x.id===id));}
+function saveVisit(){
+  const data=document.getElementById('f-data').value;
+  const funcionario=document.getElementById('f-func').value;
+  const cliente=document.getElementById('f-client').value;
+  const atividade=document.getElementById('f-atv').value;
+  const obs=document.getElementById('f-obs').value;
+  if(!data||!cliente){alert('Preencha a data e o cliente.');return;}
+  const now=new Date().toISOString();
+  if(editVisitId){
+    const existing=visits.find(v=>v.id===editVisitId);
+    const updated={...existing,data,funcionario,cliente,atividade,status:curFormStatus,obs,atualizadoEm:now};
+    visits=visits.map(v=>v.id===editVisitId?updated:v);
+    saveVisitItem(updated);
+  } else {
+    ensureUser();
+    const novo={id:nextVisitId(),data,funcionario,cliente,atividade,status:curFormStatus,obs,
+      criadoEm:now,atualizadoEm:now,registradoPor:curUser};
+    const key=db.ref('visits').push().key;
+    novo._key=key;
+    visits.push(novo);
+    saveVisitItem(novo);
+  }
+  editVisitId=null;goTo('visits');
+}
+function deleteVisit(){
+  if(!confirm('Excluir esta visita?'))return;
+  const v=visits.find(x=>x.id===editVisitId);
+  if(v?._key) deleteVisitItem(v._key);
+  visits=visits.filter(v=>v.id!==editVisitId);
+  editVisitId=null;goTo('visits');
+}
+
+// ── CLIENTS LIST ──────────────────────────────────────────────
+function renderClients(){
+  const q=(document.getElementById('c-search').value||'').toLowerCase();
+  const filtered=clients.filter(c=>!q||c.nome.toLowerCase().includes(q)||c.responsavel.toLowerCase().includes(q)).sort((a,b)=>a.nome.localeCompare(b.nome));
+  document.getElementById('c-count').textContent=`${filtered.length} de ${clients.length} clientes`;
+  let html='';
+  filtered.forEach(c=>{
+    const hasWA=c.telefone&&c.telefone.replace(/\D/g,'').length>=10;
+    const waDot=hasWA?`<span style="font-size:11px;color:#25D366;font-weight:600" onclick="event.stopPropagation();openWA('${esc(c.telefone)}')">WA</span>`:'';
+        const clientVisits=visits.filter(v=>v.cliente===c.nome).sort((a,b)=>b.data.localeCompare(a.data));
+    const lastVisit=clientVisits[0];
+    const lastVisitStr=lastVisit?fmtDate(lastVisit.data)+' · '+lastVisit.status:'Sem visitas';
+    html+=`<div class="row-item" onclick="showClient(${c.id})">
+      <div class="avatar-sm" style="background:var(--green-light);color:var(--green-dark)">${initials(c.nome)}</div>
+      <div style="flex:1;min-width:0">
+        <div class="row-name">${esc(c.nome)}</div>
+        <div class="row-sub">${esc(c.responsavel||'—')}${c.telefone?' · '+c.telefone:''}</div>
+        <div style="font-size:10px;color:var(--muted);margin-top:1px">📅 Última: ${esc(lastVisitStr)}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">${waDot}<span style="color:var(--muted);font-size:18px">›</span></div>
+    </div>`;
+  });
+  document.getElementById('c-list').innerHTML=html||'<div class="empty">Nenhum cliente encontrado</div>';
+}
+
+function showClient(id){
+  const c=clients.find(x=>x.id===id);if(!c)return;
+  const hasWA=c.telefone&&c.telefone.replace(/\D/g,'').length>=10;
+  const fields=[['Responsável',c.responsavel],['Telefone',c.telefone],['E-mail',c.email],['Obs.',c.obs]].filter(([,v])=>v);
+  const fieldsH=fields.map(([k,v])=>`<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${esc(v)}</span></div>`).join('');
+  // Próxima visita agendada
+  const t=today();
+  const nextV=visits.filter(v=>v.cliente===c.nome&&v.data>=t&&v.status==='Agendada').sort((a,b)=>a.data.localeCompare(b.data))[0];
+  const nextChip=nextV?`<div class="next-chip">📅 Próxima visita: <strong>${fmtDate(nextV.data)}</strong> — ${esc(nextV.atividade)}</div>`:'';
+  // Histórico de visitas
+  const hist=visits.filter(v=>v.cliente===c.nome).sort((a,b)=>b.data.localeCompare(a.data));
+  let histHtml='';
+  if(hist.length){
+    histHtml=`<div class="sec-title">Histórico de visitas (${hist.length})</div>`;
+    hist.forEach(v=>{
+      histHtml+=`<div class="hist-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><span class="hist-act">${esc(v.atividade)}</span><span class="badge badge-${v.status}" style="font-size:10px;padding:1px 7px">${v.status}</span></div><div class="hist-date">${fmtDate(v.data)} · ${esc(v.funcionario)}</div>${v.obs?`<div class="hist-obs">${esc(v.obs)}</div>`:''}</div>`;
+    });
+  } else {histHtml='<div style="font-size:12px;color:var(--muted);padding:8px 0">Nenhuma visita registrada</div>';}
+  const waBtn=hasWA?`<button class="btn btn-whatsapp" onclick="openWA('${esc(c.telefone)}')"><svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>WhatsApp — ${esc(c.responsavel||c.nome)}</button>`:'';
+  document.getElementById('c-search').style.display='none';
+  document.getElementById('c-count').style.display='none';
+  document.getElementById('c-list').innerHTML=`
+    <div style="padding-top:16px">
+      <button class="back-btn" onclick="goTo('clients')">← Voltar</button>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+        <div class="avatar-sm" style="width:52px;height:52px;font-size:16px;background:var(--green-light);color:var(--green-dark)">${initials(c.nome)}</div>
+        <div><div style="font-size:16px;font-weight:600;color:var(--text)">${esc(c.nome)}</div>${c.obs?`<div style="font-size:12px;color:var(--muted);margin-top:2px">${esc(c.obs)}</div>`:''}</div>
+      </div>
+      ${nextChip}
+      <div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">${fieldsH||'<div class="detail-row"><span class="detail-val" style="color:var(--muted)">Sem dados cadastrados</span></div>'}</div>
+      ${waBtn}
+      <button class="btn" style="background:var(--blue-bg);color:var(--blue-c);border:1px solid var(--blue-b);" onclick="editClient(${c.id})">✎ &nbsp;Editar dados desta empresa</button>
+      <div style="margin-top:4px">${histHtml}</div>
+    </div>`;
+}
+
+// ── CLIENT FORM ───────────────────────────────────────────────
+function newClient(){editClientId=null;renderClientForm(null);}
+function editClient(id){editClientId=id;renderClientForm(clients.find(x=>x.id===id));}
+function renderClientForm(c){
+  editClientId=c?c.id:null;const isEdit=!!c;
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('s-cform').classList.add('active');
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  const nb=document.querySelector('[data-tab="clients"]');if(nb)nb.classList.add('active');
+  document.getElementById('s-cform').innerHTML=`
+    <button class="back-btn" onclick="goTo('clients')">← Voltar para Clientes</button>
+    <div style="font-size:16px;font-weight:600;margin-bottom:4px;color:var(--text)">${isEdit?'Editar Empresa':'Nova Empresa'}</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Preencha os dados da empresa</div>
+    <label class="form-label">Nome da empresa <span style="color:var(--red-c)">*</span></label>
+    <input type="text" id="cf-nome" class="form-input" placeholder="Ex: Vale S11D" value="${esc(c?c.nome:'')}">
+    <label class="form-label">Responsável / Contato</label>
+    <input type="text" id="cf-resp" class="form-input" placeholder="Ex: João Silva" value="${esc(c?c.responsavel:'')}">
+    <label class="form-label">Telefone / WhatsApp</label>
+    <input type="tel" id="cf-tel" class="form-input" placeholder="Ex: 94991234567" value="${esc(c?c.telefone:'')}">
+    <label class="form-label">E-mail</label>
+    <input type="email" id="cf-email" class="form-input" placeholder="Ex: contato@empresa.com" value="${esc(c?c.email:'')}">
+    <label class="form-label">Observação (cargo, setor...)</label>
+    <input type="text" id="cf-obs" class="form-input" placeholder="Ex: Comprador, Engenheiro..." value="${esc(c?c.obs:'')}">
+    <div style="margin-top:20px">
+      <button type="button" class="btn btn-primary" onclick="saveClient()">${isEdit?'Salvar Alterações':'Cadastrar Empresa'}</button>
+      ${isEdit?`<button type="button" class="btn btn-danger" onclick="deleteClient()">Excluir Empresa</button>`:''}
+      <button type="button" class="btn btn-ghost" onclick="goTo('clients')">Cancelar</button>
+    </div>`;
+}
+function saveClient(){
+  const nome=(document.getElementById('cf-nome').value||'').trim();
+  if(!nome){alert('O nome da empresa é obrigatório.');return;}
+  const obj={id:editClientId||nextClientId(),nome,responsavel:(document.getElementById('cf-resp').value||'').trim(),telefone:(document.getElementById('cf-tel').value||'').trim(),email:(document.getElementById('cf-email').value||'').trim(),obs:(document.getElementById('cf-obs').value||'').trim()};
+  if(editClientId){
+    const existing=clients.find(c=>c.id===editClientId);
+    obj._key=existing?._key;
+    clients=clients.map(c=>c.id===editClientId?obj:c);
+  } else {
+    const key=db.ref('clients').push().key;
+    obj._key=key;
+    clients.push(obj);
+  }
+  saveClientItem(obj);editClientId=null;goTo('clients');
+}
+function deleteClient(){
+  if(!confirm('Excluir esta empresa?'))return;
+  const cl=clients.find(c=>c.id===editClientId);
+  if(cl?._key) deleteClientItem(cl._key);
+  clients=clients.filter(c=>c.id!==editClientId);
+  editClientId=null;goTo('clients');
+}
+
+// ── RELATÓRIO ─────────────────────────────────────────────────
+function renderReport(){
+  const anos=[...new Set(visits.map(v=>v.data.slice(0,4)))].sort((a,b)=>b-a);
+  if(!repAno&&anos.length)repAno=anos[0];
+  const filtered=visits.filter(v=>{const yr=v.data.slice(0,4)===repAno;const moIdx=MESES.indexOf(repMes);const mo=repMes==='Todos'||v.data.slice(5,7)===String(moIdx+1).padStart(2,'0');return yr&&mo;}).sort((a,b)=>b.data.localeCompare(a.data));
+  const byStatus={};filtered.forEach(v=>byStatus[v.status]=(byStatus[v.status]||0)+1);
+  const byClient={};filtered.forEach(v=>byClient[v.cliente]=(byClient[v.cliente]||0)+1);
+  const topC=Object.entries(byClient).sort((a,b)=>b[1]-a[1]).slice(0,5);
+  const anoOpts=anos.map(a=>`<option${a===repAno?' selected':''}>${a}</option>`).join('');
+  const mesOpts=['Todos',...MESES].map(m=>`<option${m===repMes?' selected':''}>${m}</option>`).join('');
+  const statH=[['Agendada','var(--blue-bg)','var(--blue-c)','var(--blue-b)'],['Realizada','var(--green-bg)','var(--green-c)','var(--green-bb)'],['Reagendada','#f3f0ff','#7c3aed','#c4b5fd'],['Cancelada','var(--red-bg)','var(--red-c)','var(--red-b)'],['Atrasada','var(--amber-bg)','var(--amber-c)','var(--amber-b)']].map(([s,bg,c,bd])=>`<div style="background:${bg};border:1px solid ${bd};border-radius:8px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:11px;color:${c}">${s}</span><span style="font-size:18px;font-weight:700;color:${c}">${byStatus[s]||0}</span></div>`).join('');
+  const topH=topC.map(([nome,qt])=>{const pct=Math.round((qt/filtered.length)*100);return`<div style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:68%">${esc(nome)}</span><span style="font-size:12px;color:var(--muted)">${qt} (${pct}%)</span></div><div class="prog-wrap"><div class="prog-bar" style="width:${pct}%"></div></div></div>`;}).join('');
+  document.getElementById('s-report').innerHTML=`
+    <div style="font-size:16px;font-weight:600;margin-bottom:14px;color:var(--text)">Relatório de Visitas</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <select class="form-input" style="flex:1" onchange="repAno=this.value;renderReport()">${anoOpts}</select>
+      <select class="form-input" style="flex:1" onchange="repMes=this.value;renderReport()">${mesOpts}</select>
+    </div>
+    <div class="card" style="margin-bottom:12px"><div style="font-size:12px;color:var(--muted);margin-bottom:10px">Resumo — ${filtered.length} visita(s)</div><div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">${statH}</div></div>
+    ${topC.length?`<div class="card" style="margin-bottom:14px"><div style="font-size:12px;color:var(--muted);margin-bottom:10px">Top clientes no período</div>${topH}</div>`:''}
+    <div class="card" style="margin-bottom:12px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Visitas por funcionário</div>
+      ${(()=>{
+        const byFunc={};filtered.forEach(v=>{byFunc[v.funcionario]=(byFunc[v.funcionario]||0)+1;});
+        const sorted=Object.entries(byFunc).sort((a,b)=>b[1]-a[1]);
+        const max=sorted[0]?.[1]||1;
+        return sorted.map(([nome,qt])=>{
+          const pct=Math.round((qt/filtered.length)*100);
+          const barW=Math.round((qt/max)*100);
+          return `<div style="margin-bottom:8px">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+              <span style="font-size:12px;color:var(--text)">${esc(nome)}</span>
+              <span style="font-size:12px;color:var(--muted)">${qt} (${pct}%)</span>
+            </div>
+            <div class="prog-wrap"><div class="prog-bar" style="width:${barW}%;background:var(--green)"></div></div>
+          </div>`;
+        }).join('');
+      })()}
+    </div>
+    <button class="btn btn-export" onclick="exportCSV()">↓ &nbsp;Exportar CSV (${filtered.length} visitas)</button>`;
+}
+function exportCSV(){
+  const anos=[...new Set(visits.map(v=>v.data.slice(0,4)))].sort((a,b)=>b-a);
+  if(!repAno&&anos.length)repAno=anos[0];
+  const filtered=visits.filter(v=>{const yr=v.data.slice(0,4)===repAno;const moIdx=MESES.indexOf(repMes);const mo=repMes==='Todos'||v.data.slice(5,7)===String(moIdx+1).padStart(2,'0');return yr&&mo;}).sort((a,b)=>b.data.localeCompare(a.data));
+  const header='Data,Funcionário,Cliente,Atividade,Status,Observações\n';
+  const rows=filtered.map(v=>`${fmtDate(v.data)},"${v.funcionario}","${v.cliente}","${v.atividade}",${v.status},"${(v.obs||'').replace(/"/g,"'")}"`).join('\n');
+  const blob=new Blob(['\uFEFF'+header+rows],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`visitas_${repAno}${repMes!=='Todos'?'_'+repMes:''}.csv`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+}
+
+function openWA(tel){window.open(`https://wa.me/55${tel.replace(/\D/g,'')}`, '_blank');}
+
+initApp();
+</script>
+</body>
+</html>
