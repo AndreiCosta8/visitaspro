@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-title" content="VisitasPRO">
 <title>VisitasPRO</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
@@ -129,9 +130,91 @@ body{background:var(--bg);color:var(--text);}
 #loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:14px;}
 .spinner{width:36px;height:36px;border:3px solid var(--green-light);border-top-color:var(--green);border-radius:50%;animation:spin 0.8s linear infinite;}
 @keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── LOGIN ──────────────────────────────── */
+#login-screen{
+  position:fixed;inset:0;z-index:9999;
+  background:var(--bg,#f5f5f5);
+  display:none;align-items:center;justify-content:center;padding:20px;
+}
+.lw{
+  background:var(--card,#fff);
+  border:1px solid var(--border,#e5e7eb);
+  border-radius:18px;padding:32px 28px;
+  width:100%;max-width:360px;
+  box-shadow:0 8px 32px rgba(0,0,0,.08);
+  animation:lwFadeUp .3s ease;
+}
+@keyframes lwFadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+.lw-logo{display:flex;align-items:center;gap:10px;margin-bottom:22px}
+.lw-icon{
+  width:40px;height:40px;border-radius:10px;
+  background:linear-gradient(135deg,#1D9E75,#0F6E56);
+  display:flex;align-items:center;justify-content:center;font-size:18px;
+}
+.lw-name{font-size:14px;font-weight:700;color:var(--text,#1a1a1a)}
+.lw-sub{font-size:9px;color:var(--muted,#6b7280);text-transform:uppercase;letter-spacing:.5px}
+.lw-title{font-size:18px;font-weight:700;color:var(--text,#1a1a1a);margin-bottom:4px}
+.lw-desc{font-size:11px;color:var(--muted,#6b7280);margin-bottom:20px}
+.lw-fg{margin-bottom:12px}
+.lw-fg label{display:block;font-size:10px;color:var(--muted,#6b7280);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.lw-fg input{
+  width:100%;background:var(--bg,#f5f5f5);
+  border:1px solid var(--border,#e5e7eb);border-radius:8px;
+  padding:10px 12px;font-size:13px;color:var(--text,#1a1a1a);
+  font-family:inherit;outline:none;transition:border-color .15s;
+}
+.lw-fg input:focus{border-color:#1D9E75}
+.lw-btn{
+  width:100%;background:linear-gradient(135deg,#1D9E75,#0F6E56);
+  color:#fff;font-weight:700;font-size:13px;
+  padding:11px;border:none;border-radius:9px;
+  cursor:pointer;font-family:inherit;
+  transition:opacity .12s,transform .12s;margin-top:4px;
+}
+.lw-btn:hover{opacity:.9;transform:translateY(-1px)}
+.lw-err{
+  background:#FCEBEB;border:1px solid #F7C1C1;
+  border-radius:7px;padding:8px 11px;
+  font-size:11px;color:#A32D2D;margin-top:10px;display:none;
+}
+.lw-ld{text-align:center;font-size:11px;color:var(--muted,#6b7280);margin-top:8px;display:none}
+.lw-forgot{text-align:center;margin-top:12px;font-size:11px;color:var(--muted,#6b7280)}
+.lw-forgot a{color:#1D9E75;text-decoration:none;cursor:pointer}
+.lw-forgot a:hover{text-decoration:underline}
+
 </style>
 </head>
 <body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="lw">
+    <div class="lw-logo">
+      <div class="lw-icon">🗺️</div>
+      <div>
+        <div class="lw-name">VisitasPRO</div>
+        <div class="lw-sub">Loja Parauapebas · Vale S.A.</div>
+      </div>
+    </div>
+    <div class="lw-title">Acesso restrito</div>
+    <div class="lw-desc">Entre com seu e-mail e senha para continuar</div>
+    <div class="lw-fg">
+      <label>E-mail</label>
+      <input type="email" id="l-email" placeholder="seu@email.com" autocomplete="email"/>
+    </div>
+    <div class="lw-fg">
+      <label>Senha</label>
+      <input type="password" id="l-pwd" placeholder="••••••••" autocomplete="current-password"
+        onkeydown="if(event.key==='Enter')loginSubmit()"/>
+    </div>
+    <button class="lw-btn" onclick="loginSubmit()">Entrar</button>
+    <div class="lw-err" id="l-err"></div>
+    <div class="lw-ld"  id="l-ld">Autenticando...</div>
+    <div class="lw-forgot"><a onclick="loginForgot()">Esqueci minha senha</a></div>
+  </div>
+</div>
+
 <div id="loading">
   <div class="spinner"></div>
   <div style="font-size:15px;font-weight:600;color:var(--green)">VisitasPRO</div>
@@ -193,6 +276,54 @@ body{background:var(--bg);color:var(--text);}
 const firebaseConfig={apiKey:"AIzaSyAP3eGk560s22KWpS3wZY_alSC0Kx9quUM",authDomain:"visitaspro-2413a.firebaseapp.com",databaseURL:"https://visitaspro-2413a-default-rtdb.firebaseio.com",projectId:"visitaspro-2413a",storageBucket:"visitaspro-2413a.firebasestorage.app",messagingSenderId:"408385222289",appId:"1:408385222289:web:9022ef9bd15582f1cef130"};
 firebase.initializeApp(firebaseConfig);
 const db=firebase.database();
+const _auth=firebase.auth();
+
+// ── AUTH: verificar login antes de mostrar o app ──────────────
+_auth.onAuthStateChanged(user=>{
+  if(user){
+    document.getElementById('login-screen').style.display='none';
+    window._vpUser=user;
+    // initApp é chamado pelo próprio fluxo do Firebase DB
+    // só precisa garantir que o loading nativo do VisitasPRO rode
+    // Disparar o initApp aqui pois removemos a chamada automática
+    if(typeof initApp==='function') initApp();
+  } else {
+    document.getElementById('loading').style.display='none';
+    document.getElementById('app').style.display='none';
+    document.getElementById('login-screen').style.display='flex';
+  }
+});
+
+async function loginSubmit(){
+  const email=document.getElementById('l-email').value.trim();
+  const pwd=document.getElementById('l-pwd').value;
+  const errEl=document.getElementById('l-err');
+  const ldEl=document.getElementById('l-ld');
+  errEl.style.display='none';
+  if(!email||!pwd){errEl.textContent='Preencha e-mail e senha.';errEl.style.display='block';return;}
+  ldEl.style.display='block';
+  try{
+    await _auth.signInWithEmailAndPassword(email,pwd);
+  }catch(e){
+    ldEl.style.display='none';
+    const msgs={
+      'auth/user-not-found':'E-mail não encontrado.',
+      'auth/wrong-password':'Senha incorreta.',
+      'auth/invalid-email':'E-mail inválido.',
+      'auth/too-many-requests':'Muitas tentativas. Aguarde.',
+      'auth/invalid-credential':'E-mail ou senha incorretos.',
+    };
+    errEl.textContent=msgs[e.code]||'Erro: '+e.message;
+    errEl.style.display='block';
+  }
+}
+async function loginForgot(){
+  const email=document.getElementById('l-email').value.trim();
+  const addr=email||prompt('Digite seu e-mail:');
+  if(!addr)return;
+  try{await _auth.sendPasswordResetEmail(addr);alert('✅ E-mail enviado para: '+addr);}
+  catch(e){alert('Erro: '+e.message);}
+}
 
 // ── DADOS INICIAIS ────────────────────────────────────────────
 const INITIAL_CLIENTS=[
@@ -800,7 +931,7 @@ function exportCSV(){
 
 function openWA(tel){window.open(`https://wa.me/55${tel.replace(/\D/g,'')}`, '_blank');}
 
-initApp();
+// initApp() agora é chamado pelo onAuthStateChanged
 </script>
 </body>
 </html>
