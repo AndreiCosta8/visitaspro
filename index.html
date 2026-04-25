@@ -931,6 +931,22 @@ function exportCSV(){
 
 function openWA(tel){window.open(`https://wa.me/55${tel.replace(/\D/g,'')}`, '_blank');}
 
+// ── DEEP LINK: ?tab=X navega direto ─────────────────────────
+(function(){
+  const validTabs = ['dash','visits','form','report','clients'];
+  const params = new URLSearchParams(window.location.search);
+  const tab = params.get('tab');
+  if(tab && validTabs.includes(tab)){
+    // Espera um pouco mais (1s) porque visitaspro carrega após auth
+    window.addEventListener('load', () => setTimeout(() => {
+      try {
+        if(tab === 'form') { newVisit(); }
+        else { goTo(tab); }
+      } catch(e){ console.warn('Deep-link falhou:', e); }
+    }, 1000));
+  }
+})();
+
 // initApp() agora é chamado pelo onAuthStateChanged
 </script>
 </body>
