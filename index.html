@@ -617,16 +617,7 @@ function initApp(){
   },()=>{vr=true;ck();});
   db.ref('clients').on('value',snap=>{
     const d=snap.val();
-    if(d){
-      const incoming=o2a(d);
-      // Mescla: preserva o campo 'ativo' do estado local quando ainda está pendente de confirmação
-      clients=incoming.map(ic=>{
-        const local=clients.find(lc=>lc.id===ic.id);
-        // Se o registro local tem 'ativo' definido, prefere o valor local (pode ser write pendente)
-        if(local&&local.ativo!==undefined&&ic.ativo===undefined)return{...ic,ativo:local.ativo};
-        return ic;
-      });
-    }
+    if(d)clients=o2a(d);
     else if(!cr){clients=JSON.parse(JSON.stringify(IC));db.ref('clients').set(a2o(clients));}
     cr=true;updHdr();
     if(fbOk&&curScreen==='clients')renderClients();
@@ -1063,13 +1054,29 @@ function saveClient(){
   const nome=(document.getElementById('cf-nome').value||'').trim();
   if(!nome){toast('O nome da empresa é obrigatório','err');return;}
   const existing=clients.find(c=>c.id===ecId);
-  const obj={id:ecId||nci(),nome,responsavel:(document.getElementById('cf-resp').value||'').trim(),telefone:(document.getElementById('cf-tel').value||'').trim(),email:(document.getElementById('cf-email').value||'').trim(),obs:(document.getElementById('cf-obs').value||'').trim(),ativo:existing?existing.ativo!==false:true};
+  const newId=ecId||nci();
+  const obj={id:newId,nome,responsavel:(document.getElementById('cf-resp').value||'').trim(),telefone:(document.getElementById('cf-tel').value||'').trim(),email:(document.getElementById('cf-email').value||'').trim(),obs:(document.getElementById('cf-obs').value||'').trim(),ativo:existing?existing.ativo!==false:true};
+  // Atualiza localmente
   if(ecId)clients=clients.map(c=>c.id===ecId?obj:c);else clients.push(obj);
-  scFB();toast(ecId?'Empresa atualizada!':'Empresa cadastrada!','ok');ecId=null;goTo('clients');
+  // Write atômico — só este cliente (evita sobrescrever coleção inteira)
+  setSyncs('sy');
+  db.ref('clients/'+newId).set(obj)
+    .then(()=>{setSyncs('ok');})
+    .catch(()=>{setSyncs('er');toast('Erro ao salvar — verifique conexão','err');});
+  toast(ecId?'Empresa atualizada!':'Empresa cadastrada!','ok');
+  ecId=null;
+  goTo('clients');
 }
 function delClient(){
+  const idToDel=ecId;
   modalConfirm('Excluir empresa','As visitas desta empresa não serão excluídas.',()=>{
-    clients=clients.filter(c=>c.id!==ecId);scFB();toast('Empresa excluída','warn');ecId=null;goTo('clients');
+    clients=clients.filter(c=>c.id!==idToDel);
+    // Remove atômico — só este cliente
+    setSyncs('sy');
+    db.ref('clients/'+idToDel).remove()
+      .then(()=>setSyncs('ok'))
+      .catch(()=>{setSyncs('er');toast('Erro ao excluir','err');});
+    toast('Empresa excluída','warn');ecId=null;goTo('clients');
   });
 }
 
