@@ -617,7 +617,16 @@ function initApp(){
   },()=>{vr=true;ck();});
   db.ref('clients').on('value',snap=>{
     const d=snap.val();
-    if(d)clients=o2a(d);
+    if(d){
+      const incoming=o2a(d);
+      // Mescla: preserva o campo 'ativo' do estado local quando ainda está pendente de confirmação
+      clients=incoming.map(ic=>{
+        const local=clients.find(lc=>lc.id===ic.id);
+        // Se o registro local tem 'ativo' definido, prefere o valor local (pode ser write pendente)
+        if(local&&local.ativo!==undefined&&ic.ativo===undefined)return{...ic,ativo:local.ativo};
+        return ic;
+      });
+    }
     else if(!cr){clients=JSON.parse(JSON.stringify(IC));db.ref('clients').set(a2o(clients));}
     cr=true;updHdr();
     if(fbOk&&curScreen==='clients')renderClients();
@@ -880,10 +889,15 @@ let cAtivoFilter='ativos'; // 'todos' | 'ativos' | 'inativos'
 function toggleAtivo(id,ev){
   ev&&ev.stopPropagation();
   const c=clients.find(x=>x.id===id);if(!c)return;
-  const novoEstado=c.ativo===false?true:false; // default é ativo
+  const novoEstado=c.ativo===false?true:false;
+  // Atualiza localmente primeiro (resposta imediata na tela)
   clients=clients.map(x=>x.id===id?{...x,ativo:novoEstado}:x);
-  scFB();
-  toast(novoEstado?`${c.nome} marcado como Ativo`:`${c.nome} marcado como Inativo`, novoEstado?'ok':'warn');
+  // Salva apenas o campo 'ativo' deste cliente (atômico — evita sobrescrita)
+  setSyncs('sy');
+  db.ref('clients/'+id+'/ativo').set(novoEstado)
+    .then(()=>setSyncs('ok'))
+    .catch(()=>{setSyncs('er');toast('Erro ao salvar — verifique a conexão','err');});
+  toast(novoEstado?`${c.nome} marcado como Ativo`:`${c.nome} marcado como Inativo`,novoEstado?'ok':'warn');
   renderClients();
 }
 
