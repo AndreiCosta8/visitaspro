@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="VisitasPRO">
+<title>VisitasPRO</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html{-webkit-text-size-adjust:100%;}
+input,select,textarea,button{font-family:inherit;}
+
+/* ══ TOKENS ══════════════════════════════════════════════ */
+:root{
+  --f-display:'Barlow Semi Condensed','Arial Narrow',system-ui,sans-serif;
+  --f-body:'Figtree',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
+  /* verde-mata (marca) */
+  --green:#1E8A66;--gd:#0D5A42;--gl:#E0EDE5;--gm:#A9CDB9;
+  /* semânticos das visitas */
+  --blue-bg:#E3EDF8;--blue:#2A63A8;--blue-b:#B7CDE8;
+  --red-bg:#F7E4E1;--red:#A93A34;--red-b:#E9BDB8;
+  --amb-bg:#F6EAC9;--amb:#8A5A0B;--amb-b:#E4C57A;
+  --grbg:#DDEDE3;--grc:#1F6B4C;--grbb:#B2D3BF;
+  --c-real:#1E8A66;--c-agen:#3F7CC8;--c-atra:#D99A1E;--c-canc:#C9524B;
+  /* superfícies */
+  --bdr:#DAE2DB;--card:#FBFCFA;--txt:#17302A;--muted:#5C7067;
+  --bg:#EBF0EA;--inp:#F1F5EF;--hdr:#FBFCFA;--nav:#FBFCFA;--sidebar:#F6F8F3;
+  --shadow:0 1px 0 rgba(23,48,42,.04);
+  /* painel escuro + amarelo de EPI (único acento) */
+  --ink:#17302A;--on-ink:#EAF3EC;--hivis:#F2B21C;--hivis-ink:#3A2A00;
+}
+body.dark{
+  --bdr:#28372F;--card:#16221D;--txt:#E6EFE9;--muted:#8FA59A;
+  --bg:#0F1815;--inp:#1C2A24;--hdr:#121D19;--nav:#121D19;--sidebar:#111B17;
+  --shadow:none;
+  --green:#34B58A;--gd:#8FE0BC;--gl:#173428;--gm:#245240;
+  --blue-bg:#1B2E45;--blue:#86B6EE;--blue-b:#2C4A6E;
+  --red-bg:#3A1F1D;--red:#F09A94;--red-b:#5C302D;
+  --amb-bg:#38290C;--amb:#F0BE5A;--amb-b:#5A4216;
+  --grbg:#17372A;--grc:#79D8A8;--grbb:#24523D;
+  --c-real:#34B58A;--c-agen:#5E9BE0;--c-atra:#E2A93A;--c-canc:#E07670;
+  --ink:#1D4034;--on-ink:#E9F4EE;
+}
+body{font-family:var(--f-body);background:var(--bg);color:var(--txt);}
+
+/* ══ LOADING ══════════════════════════════════════════════ */
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;gap:14px;}
+.spinner{width:36px;height:36px;border:3px solid var(--gl);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ══ TOAST ════════════════════════════════════════════════ */
+#toast-wrap{position:fixed;top:20px;right:20px;z-index:99999;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
+.toast{background:var(--ink);color:var(--on-ink);border-radius:14px;padding:12px 16px;font-size:13px;box-shadow:0 8px 24px rgba(0,0,0,.22);display:flex;align-items:center;gap:10px;max-width:320px;pointer-events:all;animation:toastIn .25s ease;transition:opacity .3s,transform .3s;}
+.toast.out{opacity:0;transform:translateX(20px);}
+.toast-icon{font-size:15px;flex-shrink:0;font-weight:700;}
+.toast.ok .toast-icon{color:#6FE0B0;}
+.toast.err .toast-icon{color:#FF9A93;}
+.toast.warn .toast-icon{color:var(--hivis);}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
+
+/* ══ MODAL ════════════════════════════════════════════════ */
+#modal-overlay{position:fixed;inset:0;background:rgba(10,20,16,.55);z-index:9998;display:none;align-items:center;justify-content:center;padding:20px;}
+#modal-overlay.show{display:flex;}
+#modal-box{background:var(--card);border-radius:24px 24px 24px 8px;padding:24px;max-width:360px;width:100%;}
+#modal-title{font-family:var(--f-display);font-size:22px;font-weight:600;color:var(--txt);margin-bottom:8px;}
+#modal-msg{font-size:14px;color:var(--muted);margin-bottom:20px;line-height:1.5;}
+#modal-actions{display:flex;gap:8px;}
+#modal-actions button{flex:1;padding:11px;border-radius:12px;font-size:14px;font-weight:600;cursor:pointer;border:none;}
+#modal-cancel{background:var(--inp);color:var(--muted);}
+#modal-confirm{background:var(--red-bg);color:var(--red);}
+
+/* ══ TELAS ════════════════════════════════════════════════ */
+.screen{display:none;animation:fadeIn .16s ease;}
+.screen.active{display:block;}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+.ic{width:20px;height:20px;flex-shrink:0;}
+
+/* ══ BADGES ═══════════════════════════════════════════════ */
+.badge{display:inline-block;border-radius:999px;padding:2px 10px;font-size:11px;font-weight:600;border:1px solid;white-space:nowrap;}
+.badge-Realizada{background:var(--grbg);color:var(--grc);border-color:var(--grbb);}
+.badge-Agendada{background:var(--blue-bg);color:var(--blue);border-color:var(--blue-b);}
+.badge-Cancelada{background:var(--red-bg);color:var(--red);border-color:var(--red-b);}
+.badge-Atrasada{background:var(--amb-bg);color:var(--amb);border-color:var(--amb-b);}
+
+/* ══ BOTÕES ═══════════════════════════════════════════════ */
+.btn{width:100%;padding:12px 18px;border-radius:14px;font-size:14px;font-weight:600;cursor:pointer;border:none;margin-bottom:8px;display:flex;align-items:center;justify-content:center;gap:8px;transition:opacity .15s,transform .1s;}
+.btn:active{opacity:.85;transform:scale(.98);}
+.btn-primary{background:var(--green);color:#fff;}
+.btn-danger{background:var(--red-bg);color:var(--red);border:1px solid var(--red-b)!important;}
+.btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--bdr)!important;}
+.btn-wa{background:#1FA855;color:#fff;}
+.btn-exp{background:var(--gd);color:#fff;}
+body.dark .btn-exp{background:var(--gl);color:var(--gd);}
+.btn-dup{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-b)!important;}
+.btn-icon{width:38px;height:38px;border-radius:50%;padding:0;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;}
+.btn-add{background:var(--green);color:#fff;}
+.icon-btn{width:36px;height:36px;border-radius:50%;border:1px solid var(--bdr);background:transparent;color:var(--muted);cursor:pointer;display:inline-flex;align-items:center;justify-content:center;flex-shrink:0;}
+.icon-btn:hover{background:var(--inp);color:var(--txt);}
+
+/* ══ FORMULÁRIOS ══════════════════════════════════════════ */
+.lbl{font-size:12px;font-weight:500;color:var(--muted);display:block;margin:14px 0 5px;}
+.inp{width:100%;padding:11px 13px;border-radius:12px;border:1px solid var(--bdr);background:var(--inp);font-size:14px;color:var(--txt);outline:none;transition:border-color .15s;}
+.inp:focus{border-color:var(--green);}
+.spills{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;}
+.spill{padding:7px 15px;border-radius:999px;border:1px solid var(--bdr);background:transparent;font-size:13px;cursor:pointer;color:var(--muted);transition:all .15s;}
+.spill.a-Realizada{background:var(--grbg);color:var(--grc);border-color:var(--grbb);font-weight:600;}
+.spill.a-Agendada{background:var(--blue-bg);color:var(--blue);border-color:var(--blue-b);font-weight:600;}
+.spill.a-Cancelada{background:var(--red-bg);color:var(--red);border-color:var(--red-b);font-weight:600;}
+.spill.a-Atrasada{background:var(--amb-bg);color:var(--amb);border-color:var(--amb-b);font-weight:600;}
+.frow{display:flex;gap:5px;overflow-x:auto;padding-bottom:2px;scrollbar-width:none;}
+.frow::-webkit-scrollbar{display:none;}
+.fpill{flex-shrink:0;padding:5px 13px;border-radius:999px;border:1px solid var(--bdr);background:transparent;font-size:12px;cursor:pointer;color:var(--muted);transition:all .15s;}
+.fpill.on{background:var(--ink);color:var(--on-ink);border-color:var(--ink);}
+
+/* ══ MISC ═════════════════════════════════════════════════ */
+.sec{font-family:var(--f-display);font-size:18px;font-weight:600;color:var(--txt);margin:16px 0 8px;}
+.empty{text-align:center;color:var(--muted);padding:50px 20px;font-size:14px;}
+.card{background:var(--card);border:1px solid var(--bdr);border-radius:20px;padding:16px;box-shadow:var(--shadow);}
+.back-btn{background:none;border:none;color:var(--green);font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:14px;display:flex;align-items:center;gap:4px;}
+.row-item{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--bdr);cursor:pointer;transition:opacity .1s;}
+.row-item:active{opacity:.7;}
+.row-item.inativo{opacity:.45;}
+.av{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;font-family:var(--f-display);}
+.hist-card{background:var(--inp);border-radius:14px;padding:10px 13px;margin-bottom:6px;}
+.prog-wrap{height:6px;background:var(--gl);border-radius:999px;margin-top:4px;overflow:hidden;}
+.prog-bar{height:6px;background:var(--green);border-radius:999px;transition:width .4s ease;}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:#ccc;transition:background .3s;flex-shrink:0;}
+.sync-dot.ok{background:#1E8A66;}.sync-dot.sy{background:#F2B21C;}.sync-dot.er{background:#D9534F;}
+.next-chip{display:inline-flex;align-items:center;gap:6px;background:var(--blue-bg);border:1px solid var(--blue-b);border-radius:12px;padding:8px 13px;font-size:12px;color:var(--blue);margin-bottom:12px;}
+.dias-badge{font-size:10px;border-radius:999px;padding:2px 8px;font-weight:600;white-space:nowrap;}
+.dias-ok{background:var(--grbg);color:var(--grc);}
+.dias-warn{background:var(--amb-bg);color:var(--amb);}
+.dias-danger{background:var(--red-bg);color:var(--red);}
+.dias-new{background:var(--blue-bg);color:var(--blue);}
+.qa-btn{font-size:11px;padding:4px 10px;border-radius:999px;border:none;cursor:pointer;background:var(--grbg);color:var(--grc);font-weight:600;transition:opacity .15s;display:inline-flex;align-items:center;gap:3px;}
+.qa-btn:hover{opacity:.8;}
+.kb-card.overdue{border:2px solid var(--amb);}
+.kb-card.overdue .kb-client::before{content:'⚠ ';font-size:11px;color:var(--amb);}
+.overdue-tag{font-size:9px;font-weight:700;color:var(--amb);background:var(--amb-bg);border-radius:6px;padding:1px 6px;margin-left:4px;vertical-align:middle;}
+.sort-sel{padding:6px 11px;border-radius:12px;border:1px solid var(--bdr);background:var(--inp);font-size:12px;color:var(--muted);cursor:pointer;outline:none;}
+.page-title{font-family:var(--f-display);font-size:22px;font-weight:600;color:var(--txt);}
+:focus-visible{outline:2px solid var(--green);outline-offset:2px;}
+.inp:focus-visible{outline:none;}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;}}
+
+/* ══ MARCA / NAVEGAÇÃO ════════════════════════════════════ */
+.sb-mark{width:38px;height:38px;border-radius:12px 12px 12px 4px;background:var(--ink);color:var(--hivis);display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sb-mark.sm{width:32px;height:32px;}
+.sb-logo-txt{font-family:var(--f-display);font-size:22px;font-weight:600;color:var(--txt);line-height:1;}
+.sb-logo-sub{font-size:11px;color:var(--muted);margin-top:3px;}
+.sync{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--muted);margin-left:auto;}
+
+/* ══ PAINEL INÍCIO ════════════════════════════════════════ */
+.dash-head{margin-bottom:18px;}
+.dash-date{font-size:13px;color:var(--muted);}
+.dash-date::first-letter{text-transform:uppercase;}
+.dash-hello{font-family:var(--f-display);font-size:36px;font-weight:600;line-height:1.05;letter-spacing:-.01em;color:var(--txt);margin-top:2px;}
+.dash-main,.dash-rail,.dash-m{display:flex;flex-direction:column;min-width:0;}
+.dash-main,.dash-m{gap:20px;}
+.dash-rail{gap:28px;}
+.panel{background:var(--card);border:1px solid var(--bdr);border-radius:28px 28px 28px 8px;padding:20px;}
+.panel-ink{background:var(--ink);color:var(--on-ink);border-color:transparent;}
+.h2{font-family:var(--f-display);font-size:22px;font-weight:600;line-height:1.1;color:var(--txt);}
+.h2-sub{font-size:12px;color:var(--muted);margin-top:3px;}
+.who{flex:1;min-width:0;}
+.who b{display:block;font-weight:600;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.who span{display:block;font-size:12px;color:var(--muted);margin-top:1px;}
+.who .warn{color:var(--amb);font-weight:500;}
+.muted-line{font-size:13px;color:var(--muted);padding:12px 0;}
+
+/* Hoje (painel escuro) */
+.today-title{font-family:var(--f-display);font-size:34px;font-weight:600;line-height:1.05;}
+.today-sub{font-size:13px;opacity:.75;margin-top:6px;}
+.today-list{margin-top:16px;}
+.today-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid rgba(255,255,255,.14);cursor:pointer;}
+.today-row .who span{color:var(--on-ink);opacity:.7;}
+.today-done{padding:8px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.4);background:transparent;color:var(--on-ink);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;}
+.today-done:hover{background:rgba(255,255,255,.12);}
+.today-foot{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px;}
+.pill-hivis{background:var(--hivis);color:var(--hivis-ink);border:none;border-radius:999px;padding:10px 18px;font-weight:700;font-size:13px;cursor:pointer;}
+.pill-hivis:active{transform:scale(.97);}
+.pill-late{background:rgba(242,178,28,.16);color:#F7D06E;border:1px solid rgba(242,178,28,.45);border-radius:999px;padding:10px 16px;font-weight:600;font-size:13px;cursor:pointer;}
+.pill-small{background:transparent;color:var(--gd);border:1px solid var(--gm);border-radius:999px;padding:6px 13px;font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;}
+.pill-small:hover{background:var(--gl);}
+.pill-solid{background:var(--green);color:#fff;border:none;border-radius:999px;padding:9px 16px;font-size:13px;font-weight:600;cursor:pointer;margin-top:10px;}
+
+/* Diário do mês (calendário) */
+.diary-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;}
+.diary-month{font-family:var(--f-display);font-size:30px;font-weight:600;line-height:1;}
+.diary-month::first-letter{text-transform:uppercase;}
+.diary-nav{display:flex;gap:6px;}
+.goal{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;}
+.goal-txt{font-size:13px;color:var(--muted);}
+.goal-txt b{font-family:var(--f-display);font-size:22px;font-weight:600;color:var(--txt);margin-right:2px;}
+.goal-in{width:54px;padding:4px 6px;border-radius:10px;border:1px solid var(--bdr);background:var(--inp);color:var(--txt);text-align:center;font-weight:600;font-size:13px;outline:none;}
+.goal-in:focus{border-color:var(--green);}
+.goal-bar{flex:1;min-width:110px;display:flex;align-items:center;gap:8px;}
+.goal-track{flex:1;height:8px;border-radius:999px;background:var(--gl);overflow:hidden;}
+.goal-fill{height:100%;border-radius:999px;transition:width .4s ease;}
+.goal-pct{font-size:12px;font-weight:600;min-width:32px;text-align:right;}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;}
+.cal-h{font-size:11px;color:var(--muted);text-align:center;padding:0 0 6px;}
+.cal-d{position:relative;min-height:46px;border-radius:14px;border:none;background:transparent;color:var(--txt);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:7px;gap:5px;font-size:13px;font-weight:500;}
+.cal-d:hover{background:var(--inp);}
+.cal-d.we{color:var(--muted);}
+.cal-d.today{box-shadow:inset 0 0 0 2px var(--hivis);font-weight:700;color:var(--txt);}
+.cal-d.sel{background:var(--gl);}
+.cal-d.empty{visibility:hidden;pointer-events:none;}
+.cal-dots{display:flex;gap:3px;flex-wrap:wrap;justify-content:center;max-width:78%;min-height:6px;}
+.cal-dots i,.d-Realizada,.d-Agendada,.d-Atrasada,.d-Cancelada{display:inline-block;width:6px;height:6px;border-radius:50%;}
+.cal-more{font-size:9px;font-style:normal;color:var(--muted);line-height:6px;}
+.d-Realizada{background:var(--c-real);}.d-Agendada{background:var(--c-agen);}.d-Atrasada{background:var(--c-atra);}.d-Cancelada{background:var(--c-canc);}
+.legend{display:flex;gap:14px;flex-wrap:wrap;margin-top:14px;font-size:11px;color:var(--muted);}
+.legend span{display:inline-flex;align-items:center;gap:6px;}
+.day-box{margin-top:16px;padding-top:14px;border-top:1px solid var(--bdr);}
+.day-box .h2{font-size:18px;}
+.day-empty{font-size:13px;color:var(--muted);padding:10px 0 0;}
+
+/* Linhas planas (listas sem cartão) */
+.rowf{display:flex;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--bdr);cursor:pointer;}
+.rowf:first-of-type{border-top:none;}
+.datechip{width:42px;text-align:center;flex-shrink:0;}
+.datechip b{display:block;font-family:var(--f-display);font-size:24px;font-weight:600;line-height:1;color:var(--txt);}
+.datechip span{font-size:11px;color:var(--muted);}
+.rail-sec{min-width:0;}
+.rail-sec .h2{margin-bottom:6px;}
+
+/* 12 meses */
+.ribbon{display:flex;height:14px;border-radius:999px;overflow:hidden;gap:2px;background:var(--inp);margin-top:14px;}
+.ribbon i{display:block;height:100%;min-width:6px;}
+.rb-Realizada{background:var(--c-real);}.rb-Agendada{background:var(--c-agen);}.rb-Atrasada{background:var(--c-atra);}.rb-Cancelada{background:var(--c-canc);}
+.rib-legend{display:flex;gap:6px 18px;flex-wrap:wrap;margin-top:12px;font-size:12px;color:var(--muted);}
+.rib-legend span{display:inline-flex;align-items:center;gap:6px;}
+.rib-legend b{font-family:var(--f-display);font-size:18px;font-weight:600;color:var(--txt);}
+.chart{margin-top:18px;}
+.chart svg{width:100%;height:auto;display:block;overflow:visible;}
+.b-Realizada{fill:var(--c-real);}.b-Agendada{fill:var(--c-agen);}.b-Atrasada{fill:var(--c-atra);}.b-Cancelada{fill:var(--c-canc);}
+.b-empty{fill:var(--bdr);}
+.ch-lbl{fill:var(--muted);font-size:10px;font-family:var(--f-body);}
+.ch-cur{fill:var(--txt);font-weight:700;}
+.ch-val{fill:var(--txt);font-size:10px;font-weight:600;font-family:var(--f-body);}
+.ch-goal{stroke:var(--amb);stroke-width:1.5;stroke-dasharray:5 4;}
+.ch-goal-t{fill:var(--amb);font-size:10px;font-weight:600;font-family:var(--f-body);}
+
+/* ══════════════════════════════════════════════════════════
+   MOBILE
+══════════════════════════════════════════════════════════ */
+@media(max-width:767px){
+  #app{display:flex;flex-direction:column;height:100vh;height:100dvh;}
+  #sidebar{display:none;}
+  #topbar{background:var(--hdr);border-bottom:1px solid var(--bdr);padding:max(12px,env(safe-area-inset-top)) 16px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+  .tb-brand{display:flex;align-items:center;gap:10px;}
+  .tb-right{display:flex;align-items:center;gap:10px;}
+  #content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+  #bottomnav{background:var(--nav);border-top:1px solid var(--bdr);display:flex;padding:6px 4px max(8px,env(safe-area-inset-bottom));flex-shrink:0;}
+  .nav-item{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:2px 0;color:var(--muted);border:none;background:none;font-size:10px;font-weight:500;}
+  .nav-icon{width:52px;height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+  .nav-item.active{color:var(--txt);font-weight:600;}
+  .nav-item.active .nav-icon{background:var(--gl);color:var(--gd);}
+  .nav-item.nav-new .nav-icon,.nav-item.nav-new.active .nav-icon{background:var(--green);color:#fff;}
+  .screen{padding:16px;}.screen.active{display:block;}
+  #s-visits{padding:0;}#s-clients{padding:0;}
+  #s-dash{padding:18px 16px 28px;}
+  .dash-hello{font-size:32px;}
+  .swrap{padding:10px 16px;border-bottom:1px solid var(--bdr);background:var(--hdr);}
+  .lwrap{padding:10px 16px;}
+  .mvisit-card{background:var(--card);border:1px solid var(--bdr);border-left:4px solid;border-radius:16px;padding:13px 14px;margin-bottom:8px;cursor:pointer;box-shadow:var(--shadow);transition:opacity .15s;}
+  .mvisit-card:active{opacity:.8;}
+  .mvisit-card.s-Realizada{border-left-color:var(--c-real);}
+  .mvisit-card.s-Agendada{border-left-color:var(--c-agen);}
+  .mvisit-card.s-Cancelada{border-left-color:var(--c-canc);}
+  .mvisit-card.s-Atrasada{border-left-color:var(--c-atra);}
+  .drow{display:flex;gap:6px;margin-top:8px;align-items:center;}
+  .drow label{font-size:11px;color:var(--muted);flex-shrink:0;}
+  .drow input{flex:1;padding:6px 10px;border-radius:10px;border:1px solid var(--bdr);background:var(--inp);font-size:12px;color:var(--txt);}
+  #toast-wrap{top:auto;bottom:88px;right:10px;left:10px;}
+  .toast{max-width:100%;}
+  .inp,.drow input,.sort-sel,.goal-in{font-size:16px;}
+  .today-title{font-size:30px;}
+  .diary-month{font-size:26px;}
+  .cal-d{min-height:44px;}
+}
+
+/* ══════════════════════════════════════════════════════════
+   DESKTOP
+══════════════════════════════════════════════════════════ */
+@media(min-width:768px){
+  body{min-height:100vh;}
+  #app{display:flex;flex-direction:row;height:100vh;overflow:hidden;}
+  #bottomnav{display:none;}#topbar{display:none;}
+  #sidebar{width:236px;background:var(--sidebar);border-right:1px solid var(--bdr);display:flex;flex-direction:column;flex-shrink:0;padding:22px 0;}
+  .sb-logo{display:flex;align-items:center;gap:11px;padding:0 20px 22px;}
+  #sb-nav{display:flex;flex-direction:column;gap:2px;padding:0 12px;}
+  .sb-nav-item{display:flex;align-items:center;gap:12px;padding:11px 14px;cursor:pointer;font-size:14px;font-weight:500;color:var(--muted);border:none;background:none;width:100%;text-align:left;border-radius:14px;transition:background .15s,color .15s;}
+  .sb-nav-item:hover{background:var(--inp);color:var(--txt);}
+  .sb-nav-item.active{color:var(--gd);background:var(--gl);font-weight:600;}
+  .sb-bottom{margin-top:auto;padding:14px 20px 0;border-top:1px solid var(--bdr);display:flex;align-items:center;gap:10px;}
+  #content{flex:1;overflow-y:auto;display:flex;flex-direction:column;}
+  #d-topbar{background:var(--hdr);border-bottom:1px solid var(--bdr);padding:14px 32px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+  .screen{padding:28px 32px;}.screen.active{display:block;}
+  #s-visits{padding:0;}#s-clients{padding:0;}#s-dash{padding:0;}
+  .dash-wrap{padding:28px 32px 44px;max-width:1240px;}
+  .dash-grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:32px;align-items:start;}
+  .kanban-board{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;min-width:800px;}
+  .kb-col{background:var(--inp);border-radius:20px;padding:12px;}
+  .kb-col-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:2px solid var(--bdr);}
+  .kb-col-title{font-family:var(--f-display);font-size:17px;font-weight:600;color:var(--txt);}
+  .kb-count{font-size:11px;font-weight:700;border-radius:999px;padding:2px 9px;border:1px solid;}
+  .kb-card{background:var(--card);border:1px solid var(--bdr);border-radius:14px;padding:11px 13px;margin-bottom:8px;cursor:pointer;transition:border-color .15s;}
+  .kb-card:hover{border-color:var(--gm);}
+  .kb-client{font-size:13px;font-weight:600;color:var(--txt);margin-bottom:4px;}
+  .kb-act{font-size:11px;color:var(--muted);}
+  .kb-meta{display:flex;justify-content:space-between;align-items:center;margin-top:7px;}
+  .kb-obs{font-size:10px;color:var(--muted);margin-top:5px;padding:4px 7px;background:var(--inp);border-radius:8px;border-left:2px solid var(--gm);font-style:italic;}
+  .c-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px;padding:28px 32px;}
+  .c-card{background:var(--card);border:1px solid var(--bdr);border-radius:20px;padding:15px 17px;cursor:pointer;transition:border-color .15s;box-shadow:var(--shadow);}
+  .c-card:hover{border-color:var(--gm);}
+  .c-card.inativo{opacity:.5;filter:grayscale(.4);}
+  .ativo-pill{font-size:10px;font-weight:700;border-radius:999px;padding:3px 9px;border:1px solid;cursor:pointer;transition:all .15s;white-space:nowrap;flex-shrink:0;}
+  .ativo-pill.on{background:var(--grbg);color:var(--grc);border-color:var(--grbb);}
+  .ativo-pill.off{background:var(--inp);color:var(--muted);border-color:var(--bdr);}
+  .d-form-wrap{max-width:580px;margin:0 auto;}
+  .swrap{padding:16px 32px;border-bottom:1px solid var(--bdr);background:var(--hdr);display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+  .swrap input[type=text]{max-width:300px;}
+  .drow{display:flex;gap:8px;align-items:center;}
+  .drow label{font-size:12px;color:var(--muted);flex-shrink:0;}
+  .drow input{padding:8px 10px;border-radius:10px;border:1px solid var(--bdr);background:var(--inp);font-size:13px;color:var(--txt);outline:none;}
+  .lwrap{padding:0;}
+}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast-wrap" role="status" aria-live="polite"></div>
+
+<!-- CONFIRM MODAL -->
+<div id="modal-overlay">
+  <div id="modal-box" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div id="modal-title"></div>
+    <div id="modal-msg"></div>
+    <div id="modal-actions">
+      <button id="modal-cancel" onclick="modalClose()">Cancelar</button>
+      <button id="modal-confirm">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div class="brand-name" style="font-family:var(--f-display);font-size:24px;font-weight:600;color:var(--green)">VisitasPRO</div>
+  <div id="loading-msg" style="font-size:12px;color:var(--muted)">Conectando ao Firebase...</div>
+</div>
+
+<div id="app" style="display:none">
+  <!-- SIDEBAR -->
+  <div id="sidebar">
+    <div class="sb-logo">
+      <div class="sb-mark"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg></div>
+      <div><div class="sb-logo-txt brand-name">VisitasPRO</div><div class="sb-logo-sub" id="sb-sub">carregando...</div></div>
+    </div>
+    <nav id="sb-nav" aria-label="Principal"></nav>
+    <div class="sb-bottom">
+      <button class="icon-btn" onclick="toggleDark()" id="dark-btn" aria-label="Alternar tema"></button>
+      <div class="sync"><div id="sync-dot" class="sync-dot"></div><span id="sync-txt"></span></div>
+    </div>
+  </div>
+
+  <!-- MOBILE TOPBAR -->
+  <div id="topbar">
+    <div class="tb-brand">
+      <div class="sb-mark sm"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-6.5-5.6-6.5-11a6.5 6.5 0 0 1 13 0c0 5.4-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg></div>
+      <div><div class="sb-logo-txt brand-name" style="font-size:20px">VisitasPRO</div><div class="sb-logo-sub" id="mob-sub">carregando...</div></div>
+    </div>
+    <div class="tb-right">
+      <button class="icon-btn" onclick="toggleDark()" id="dark-btn-mob" aria-label="Alternar tema"></button>
+      <div id="sync-dot-mob" class="sync-dot"></div>
+      <div class="av av-me" style="width:34px;height:34px;background:var(--gl);color:var(--gd);font-size:13px;"></div>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="content">
+    <div id="d-topbar" style="display:none">
+      <div id="d-page-title" class="page-title">Início</div>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div id="sync-dot-d" class="sync-dot"></div>
+        <div class="av av-me" style="width:36px;height:36px;background:var(--gl);color:var(--gd);font-size:14px;"></div>
+      </div>
+    </div>
+    <div id="s-dash" class="screen active"></div>
+    <div id="s-visits" class="screen">
+      <div class="swrap" id="v-filter-bar">
+        <input class="inp" id="v-search" placeholder="🔍 Buscar cliente, atividade..." oninput="renderVisits()" style="flex:1;min-width:180px;">
+        <div class="frow" id="v-sf"></div>
+        <div class="frow" id="v-ff"></div>
+        <div class="drow">
+          <label>De</label><input type="date" id="v-df" onchange="renderVisits()">
+          <label>Até</label><input type="date" id="v-dt" onchange="renderVisits()">
+          <button onclick="clrDates()" style="background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;">✕</button>
+          <select class="sort-sel" id="v-sort" onchange="renderVisits()" title="Ordenar por">
+            <option value="date-desc">↓ Data</option>
+            <option value="date-asc">↑ Data</option>
+            <option value="client-az">A→Z</option>
+            <option value="client-za">Z→A</option>
+          </select>
+        </div>
+      </div>
+      <div id="v-body" class="lwrap"></div>
+    </div>
+    <div id="s-form" class="screen"></div>
+    <div id="s-report" class="screen"></div>
+    <div id="s-clients" class="screen">
+      <div class="swrap">
+        <input class="inp" id="c-search" placeholder="🔍 Buscar empresa ou responsável..." oninput="renderClients()" style="flex:1;min-width:200px;">
+        <button class="btn-icon btn-add" onclick="newClient()" title="Nova empresa">+</button>
+        <div style="font-size:12px;color:var(--muted)" id="c-count"></div>
+      </div>
+      <div class="swrap" style="padding-top:8px;padding-bottom:8px;gap:6px;">
+        <span style="font-size:12px;color:var(--muted);flex-shrink:0;">Mostrar:</span>
+        <div class="frow" id="c-ativo-filters"></div>
+      </div>
+      <div id="c-body"></div>
+    </div>
+    <div id="s-cform" class="screen"></div>
+    <div id="s-cdetail" class="screen"></div>
+  </div>
+
+  <!-- MOBILE BOTTOM NAV -->
+  <div id="bottomnav" aria-label="Principal"></div>
+</div>
+
+<script>
+/* ══ FIREBASE ════════════════════════════════════════════════ */
+const FC={apiKey:"AIzaSyAP3eGk560s22KWpS3wZY_alSC0Kx9quUM",authDomain:"visitaspro-2413a.firebaseapp.com",databaseURL:"https://visitaspro-2413a-default-rtdb.firebaseio.com",projectId:"visitaspro-2413a",storageBucket:"visitaspro-2413a.firebasestorage.app",messagingSenderId:"408385222289",appId:"1:408385222289:web:9022ef9bd15582f1cef130"};
+if(typeof firebase==='undefined'){const m=document.getElementById('loading-msg');if(m)m.textContent='Não foi possível carregar o Firebase. Verifique a internet e recarregue a página.';throw new Error('Firebase indisponível');}
+firebase.initializeApp(FC);
+const db=firebase.database();
+
+/* ══ CONFIGURAÇÃO ════════════════════════════════════════════
+   Para gerar a cópia em branco de outro usuário:
+   1) trocar o bloco FC (Firebase) acima por um projeto novo (dados separados);
+   2) seedInicial:false (não carrega clientes/visitas de exemplo);
+   3) ajustar usuario, funcionarios e atividades.                */
+const CONFIG={
+  appName:'VisitasPRO',
+  usuario:'Andrei Costa',
+  funcionarios:["Andrei Costa","Carlos Arruda","Loja"],
+  atividades:["Atendimento ao escritório","Atendimento em área","Atendimento com teste","Atendimento em loja","Treinamento","Estande dos produtos","Retorno teste"],
+  seedInicial:true
+};
+
+/* ══ ÍCONES ══════════════════════════════════════════════════ */
+const svg=d=>`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ICON={
+  home:svg('<path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5h4v5"/>'),
+  list:svg('<path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="18" r="1"/>'),
+  plus:svg('<path d="M12 5v14M5 12h14"/>'),
+  chart:svg('<path d="M5 20v-8M12 20V5M19 20v-5"/>'),
+  users:svg('<circle cx="9" cy="8" r="3.2"/><path d="M3 20c.6-3.4 3-5 6-5s5.4 1.6 6 5"/><path d="M16 5.2a3 3 0 0 1 0 5.6M18.5 15.3c1.5.7 2.3 2.1 2.5 4.2"/>'),
+  left:svg('<path d="M15 5l-7 7 7 7"/>'),
+  right:svg('<path d="M9 5l7 7-7 7"/>'),
+  sun:svg('<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6 7 7M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/>'),
+  moon:svg('<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>')
+};
+const NAV=[
+  {id:'dash',label:'Início',icon:'home',fn:"goTo('dash')"},
+  {id:'visits',label:'Visitas',icon:'list',fn:"goTo('visits')"},
+  {id:'form',label:'Nova visita',short:'Nova',icon:'plus',fn:"newVisit()"},
+  {id:'report',label:'Relatório',icon:'chart',fn:"goTo('report')"},
+  {id:'clients',label:'Clientes',icon:'users',fn:"goTo('clients')"}
+];
+function buildNav(){
+  document.getElementById('sb-nav').innerHTML=NAV.map(n=>`<button class="sb-nav-item${n.id==='dash'?' active':''}" onclick="${n.fn}" data-tab="${n.id}">${ICON[n.icon]}<span>${n.label}</span></button>`).join('');
+  document.getElementById('bottomnav').innerHTML=NAV.map(n=>`<button class="nav-item${n.id==='dash'?' active':''}${n.id==='form'?' nav-new':''}" onclick="${n.fn}" data-tab="${n.id}"><span class="nav-icon">${ICON[n.icon]}</span><span>${n.short||n.label}</span></button>`).join('');
+}
+
+/* ══ INITIAL DATA ════════════════════════════════════════════ */
+const IC=[
+{id:1,nome:"Nordeste Serviços",responsavel:"Stenio",telefone:"94992049576",email:"almoxarifado@nordestefs.com.br",obs:""},
+{id:2,nome:"NDT Engenharia",responsavel:"Mykaella",telefone:"94992287216",email:"contasapagar@ndtengenharia.com",obs:""},
+{id:3,nome:"C.A.W Projetos e Consultoria Industrial",responsavel:"Suzy Maria",telefone:"41991654812",email:"",obs:""},
+{id:4,nome:"Vale Carajás",responsavel:"Fernando Bittiol",telefone:"94992095676",email:"fernando.bittiol@vale.com",obs:""},
+{id:5,nome:"Vale S11D",responsavel:"Leidiane Moraes",telefone:"94991614047",email:"leidiane.morais@vale.com",obs:""},
+{id:6,nome:"Vale Sossego",responsavel:"Sirlene",telefone:"94991821477",email:"",obs:""},
+{id:7,nome:"ESCO/WEIR",responsavel:"Wellington",telefone:"94991313055",email:"",obs:""},
+{id:8,nome:"Consórcio Vale",responsavel:"Eder de Carvalho",telefone:"3299287106",email:"",obs:""},
+{id:9,nome:"CBSI",responsavel:"Kleber Miranda",telefone:"9488023091",email:"",obs:""},
+{id:10,nome:"NorteKar",responsavel:"",telefone:"",email:"",obs:""},
+{id:11,nome:"Amazonia Serviços",responsavel:"Maria Antônia",telefone:"94984275637",email:"",obs:""},
+{id:12,nome:"Plangecon",responsavel:"Sales Moura",telefone:"93991801290",email:"",obs:""},
+{id:13,nome:"Bra-Usi",responsavel:"Vitor Flecha",telefone:"91991657775",email:"",obs:""},
+{id:14,nome:"Concreto Blocos",responsavel:"Joice",telefone:"94991944229",email:"",obs:""},
+{id:15,nome:"Hidraucenter",responsavel:"",telefone:"94991710210",email:"",obs:""},
+{id:16,nome:"FX Engenharia e Serviços",responsavel:"Ayla",telefone:"94988075865",email:"",obs:""},
+{id:17,nome:"A Geradora",responsavel:"Luiz",telefone:"",email:"",obs:""},
+{id:18,nome:"DePaula Manutenção",responsavel:"Nathalia",telefone:"94992925875",email:"",obs:""},
+{id:19,nome:"Harpia Centro de Manutenções",responsavel:"Tairis",telefone:"94992201142",email:"",obs:""},
+{id:20,nome:"Detroyt",responsavel:"Valdir",telefone:"94992294955",email:"",obs:""},
+{id:21,nome:"Msoldas",responsavel:"Jankleia",telefone:"94992075948",email:"",obs:""},
+{id:22,nome:"Britaminas",responsavel:"Elizia",telefone:"",email:"",obs:""},
+{id:23,nome:"JG Suprimentos",responsavel:"Rodrigo",telefone:"9991571173",email:"",obs:""},
+{id:24,nome:"Recanorte",responsavel:"Bruno",telefone:"9492327675",email:"",obs:""},
+{id:25,nome:"Opus",responsavel:"Miria",telefone:"9491785422",email:"",obs:""},
+{id:26,nome:"Tecnosonda",responsavel:"Raphael",telefone:"81998743249",email:"",obs:""},
+{id:27,nome:"Marcovel",responsavel:"Ana Lucia",telefone:"94991376890",email:"",obs:""},
+{id:28,nome:"KGR",responsavel:"Talita Oliveira",telefone:"94992940025",email:"",obs:""},
+{id:29,nome:"Virtus",responsavel:"Adailton",telefone:"11941695566",email:"",obs:""},
+{id:30,nome:"Usimig",responsavel:"Lana",telefone:"94992279060",email:"",obs:""},
+{id:31,nome:"JM Engenharia",responsavel:"Cristina",telefone:"94992224364",email:"",obs:""},
+{id:32,nome:"Vale Salobo",responsavel:"Thiago Barbosa",telefone:"94991604910",email:"thiago.ribeiro.barbosa@vale.com",obs:"TSL"},
+{id:33,nome:"Ômega S11D",responsavel:"Evanusia Silva",telefone:"94999036637",email:"",obs:"TST S11D"},
+{id:34,nome:"Portal Temper",responsavel:"Ismael",telefone:"94992374257",email:"",obs:"Comprador"},
+{id:35,nome:"Real Equipamentos",responsavel:"Edenelson",telefone:"",email:"",obs:"Comprador"},
+{id:36,nome:"BS Equipamentos",responsavel:"Klebson",telefone:"",email:"",obs:"Proprietário"},
+{id:37,nome:"Plamont",responsavel:"Luciano",telefone:"2799964-7845",email:"",obs:"Almoxarifado"},
+{id:38,nome:"Alves Ribeiro",responsavel:"Ederson",telefone:"13997116598",email:"",obs:"Engenheiro"},
+{id:39,nome:"Alubar",responsavel:"Rafael",telefone:"",email:"",obs:"Engenheiro"},
+{id:40,nome:"Artemyn",responsavel:"Sergio",telefone:"",email:"",obs:"Engenheiro"},
+{id:41,nome:"Balimax",responsavel:"Luciana",telefone:"",email:"",obs:"TST"},
+];
+const IV=[
+{id:1,data:"2025-05-01",funcionario:"Andrei Costa",cliente:"NDT Engenharia",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:2,data:"2025-05-07",funcionario:"Andrei Costa",cliente:"Nordeste Serviços",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue 1 par Max Solder 10 e Hi Temp 9"},
+{id:3,data:"2025-05-08",funcionario:"Andrei Costa",cliente:"NDT Engenharia",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue 1 par Max Solder 10 e Hi Temp 9"},
+{id:4,data:"2025-05-09",funcionario:"Andrei Costa",cliente:"C.A.W Projetos e Consultoria Industrial",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue Max Defender 9 e Master Cut Flex 9"},
+{id:5,data:"2025-05-20",funcionario:"Andrei Costa",cliente:"Vale Carajás",atividade:"Estande dos produtos",status:"Realizada",obs:""},
+{id:6,data:"2025-05-22",funcionario:"Andrei Costa",cliente:"ESCO/WEIR",atividade:"Atendimento com teste",status:"Realizada",obs:""},
+{id:7,data:"2025-05-28",funcionario:"Andrei Costa",cliente:"Nordeste Serviços",atividade:"Retorno teste",status:"Realizada",obs:""},
+{id:8,data:"2025-05-27",funcionario:"Andrei Costa",cliente:"NDT Engenharia",atividade:"Retorno teste",status:"Realizada",obs:""},
+{id:9,data:"2025-05-29",funcionario:"Andrei Costa",cliente:"C.A.W Projetos e Consultoria Industrial",atividade:"Retorno teste",status:"Cancelada",obs:""},
+{id:10,data:"2025-05-23",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:11,data:"2025-05-26",funcionario:"Andrei Costa",cliente:"CBSI",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue 5 pares Total Power 9"},
+{id:12,data:"2025-05-29",funcionario:"Andrei Costa",cliente:"Consórcio Vale",atividade:"Estande dos produtos",status:"Realizada",obs:""},
+{id:13,data:"2025-05-26",funcionario:"Andrei Costa",cliente:"NorteKar",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue 1 par Total Power 9"},
+{id:14,data:"2025-06-16",funcionario:"Andrei Costa",cliente:"NorteKar",atividade:"Retorno teste",status:"Realizada",obs:""},
+{id:15,data:"2025-06-03",funcionario:"Andrei Costa",cliente:"Plangecon",atividade:"Atendimento em loja",status:"Realizada",obs:""},
+{id:16,data:"2025-06-05",funcionario:"Andrei Costa",cliente:"Amazonia Serviços",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:17,data:"2025-06-06",funcionario:"Andrei Costa",cliente:"Bra-Usi",atividade:"Atendimento em loja",status:"Cancelada",obs:""},
+{id:18,data:"2025-06-10",funcionario:"Andrei Costa",cliente:"Concreto Blocos",atividade:"Atendimento ao escritório",status:"Cancelada",obs:""},
+{id:19,data:"2025-06-10",funcionario:"Andrei Costa",cliente:"NDT Engenharia",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue 1 par Nitrileve Granulo"},
+{id:20,data:"2025-06-09",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:21,data:"2025-06-17",funcionario:"Andrei Costa",cliente:"Hidraucenter",atividade:"Atendimento ao escritório",status:"Cancelada",obs:""},
+{id:22,data:"2025-06-20",funcionario:"Andrei Costa",cliente:"FX Engenharia e Serviços",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:23,data:"2025-06-16",funcionario:"Andrei Costa",cliente:"A Geradora",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:24,data:"2025-06-17",funcionario:"Andrei Costa",cliente:"DePaula Manutenção",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:25,data:"2025-06-17",funcionario:"Andrei Costa",cliente:"Harpia Centro de Manutenções",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:26,data:"2025-06-20",funcionario:"Andrei Costa",cliente:"Detroyt",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:27,data:"2025-06-23",funcionario:"Andrei Costa",cliente:"Msoldas",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:28,data:"2025-07-02",funcionario:"Andrei Costa",cliente:"Britaminas",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:29,data:"2025-07-02",funcionario:"Andrei Costa",cliente:"Concreto Blocos",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue 1 par Nitrileve Granulo 9"},
+{id:30,data:"2025-07-03",funcionario:"Andrei Costa",cliente:"NDT Engenharia",atividade:"Atendimento em área",status:"Realizada",obs:"Entregue Nitrileve Granulo 9 e Vaqueta 9"},
+{id:31,data:"2025-07-04",funcionario:"Andrei Costa",cliente:"JG Suprimentos",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:32,data:"2025-07-09",funcionario:"Andrei Costa",cliente:"Recanorte",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:33,data:"2025-07-08",funcionario:"Andrei Costa",cliente:"Opus",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:34,data:"2025-07-14",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:35,data:"2025-07-22",funcionario:"Andrei Costa",cliente:"Tecnosonda",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue 2 pares Hytemp e 1 Total Power Plus"},
+{id:36,data:"2025-07-24",funcionario:"Andrei Costa",cliente:"Opus",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue Max Solder, Master Cut Flex e Clean Black"},
+{id:37,data:"2025-07-28",funcionario:"Andrei Costa",cliente:"Vale Carajás",atividade:"Atendimento em área",status:"Realizada",obs:""},
+{id:38,data:"2025-08-15",funcionario:"Andrei Costa",cliente:"Plangecon",atividade:"Atendimento com teste",status:"Realizada",obs:"Max Solder G, Total Power, Max Grip e Max Solder"},
+{id:39,data:"2025-08-04",funcionario:"Andrei Costa",cliente:"Marcovel",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:40,data:"2025-07-31",funcionario:"Andrei Costa",cliente:"ESCO/WEIR",atividade:"Atendimento com teste",status:"Realizada",obs:"Entregue Max Solder e Total Power"},
+{id:41,data:"2025-08-06",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento com teste",status:"Realizada",obs:"Calça com peitoral Vulca M e G"},
+{id:42,data:"2025-08-07",funcionario:"Andrei Costa",cliente:"KGR",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Entregue Vaqueta e Max Grip"},
+{id:43,data:"2025-08-13",funcionario:"Andrei Costa",cliente:"KGR",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:44,data:"2025-08-07",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Treinamento",status:"Realizada",obs:""},
+{id:45,data:"2025-08-14",funcionario:"Andrei Costa",cliente:"Virtus",atividade:"Atendimento em área",status:"Realizada",obs:""},
+{id:46,data:"2025-08-26",funcionario:"Andrei Costa",cliente:"Vale Carajás",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:47,data:"2025-11-06",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:48,data:"2025-11-06",funcionario:"Andrei Costa",cliente:"Usimig",atividade:"Atendimento ao escritório",status:"Realizada",obs:"2 pares Total Power e 2 Light Power para teste"},
+{id:49,data:"2025-11-07",funcionario:"Andrei Costa",cliente:"JM Engenharia",atividade:"Atendimento ao escritório",status:"Realizada",obs:"1 par Max Solder 9 para teste"},
+{id:50,data:"2025-11-24",funcionario:"Andrei Costa",cliente:"Plangecon",atividade:"Estande dos produtos",status:"Realizada",obs:""},
+{id:51,data:"2025-11-19",funcionario:"Andrei Costa",cliente:"JM Engenharia",atividade:"Atendimento com teste",status:"Realizada",obs:"Testar vestimenta de solda"},
+{id:52,data:"2025-11-25",funcionario:"Andrei Costa",cliente:"Usimig",atividade:"Retorno teste",status:"Realizada",obs:""},
+{id:53,data:"2026-01-15",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Cancelada",obs:""},
+{id:54,data:"2026-01-16",funcionario:"Andrei Costa",cliente:"Vale Salobo",atividade:"Atendimento ao escritório",status:"Cancelada",obs:""},
+{id:55,data:"2026-01-23",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Atendimento aos postos"},
+{id:56,data:"2026-01-12",funcionario:"Loja",cliente:"Usimig",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:57,data:"2026-01-26",funcionario:"Andrei Costa",cliente:"Ômega S11D",atividade:"Atendimento em área",status:"Realizada",obs:"DSS com a equipe da Elétrica"},
+{id:58,data:"2026-01-23",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Atendimento Gabriel"},
+{id:59,data:"2026-01-26",funcionario:"Andrei Costa",cliente:"Plangecon",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:60,data:"2026-01-21",funcionario:"Loja",cliente:"Portal Temper",atividade:"Atendimento em área",status:"Realizada",obs:""},
+{id:61,data:"2026-01-26",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Atendimento ao Armazém"},
+{id:62,data:"2026-01-27",funcionario:"Loja",cliente:"Usimig",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:63,data:"2026-02-02",funcionario:"Andrei Costa",cliente:"Ômega S11D",atividade:"Atendimento em área",status:"Realizada",obs:""},
+{id:64,data:"2026-02-02",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Atendimento ao Planejamento de estoque"},
+{id:65,data:"2026-02-05",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Atendimento aos postos de epi"},
+{id:66,data:"2026-02-05",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Atendimento ao Planejamento de estoque"},
+{id:67,data:"2026-02-10",funcionario:"Andrei Costa",cliente:"Real Equipamentos",atividade:"Atendimento em loja",status:"Realizada",obs:""},
+{id:68,data:"2026-02-12",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Atendimento TST Gesyani"},
+{id:69,data:"2026-02-13",funcionario:"Andrei Costa",cliente:"BS Equipamentos",atividade:"Atendimento em loja",status:"Realizada",obs:""},
+{id:70,data:"2026-02-23",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Atendimento Eduarda"},
+{id:71,data:"2026-02-23",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Atendimento Aramezém"},
+{id:72,data:"2026-02-27",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Atendimento Aramezém"},
+{id:73,data:"2026-03-04",funcionario:"Andrei Costa",cliente:"Plamont",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Entregue Power Chemical 10"},
+{id:74,data:"2026-03-12",funcionario:"Andrei Costa",cliente:"ESCO/WEIR",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:75,data:"2026-03-16",funcionario:"Andrei Costa",cliente:"Alves Ribeiro",atividade:"Atendimento em área",status:"Realizada",obs:""},
+{id:76,data:"2026-03-17",funcionario:"Andrei Costa",cliente:"Alubar",atividade:"Atendimento ao escritório",status:"Realizada",obs:""},
+{id:77,data:"2026-03-17",funcionario:"Andrei Costa",cliente:"Artemyn",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Entregue 2 pares Clean Black e Max Grip"},
+{id:78,data:"2026-03-17",funcionario:"Andrei Costa",cliente:"Balimax",atividade:"Atendimento ao escritório",status:"Realizada",obs:"Entregue Max Solder"},
+{id:79,data:"2026-04-06",funcionario:"Andrei Costa",cliente:"Usimig",atividade:"Atendimento em área",status:"Realizada",obs:""},
+{id:80,data:"2026-04-07",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Treinamento",status:"Realizada",obs:""},
+{id:81,data:"2026-04-08",funcionario:"Andrei Costa",cliente:"Vale S11D",atividade:"Treinamento",status:"Realizada",obs:""},
+];
+
+const ACTS=CONFIG.atividades;
+const EMPS=CONFIG.funcionarios;
+const STS=["Agendada","Realizada","Cancelada","Atrasada"];
+const MESES=["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+const MESES_L=["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const ORDEM=['Realizada','Agendada','Atrasada','Cancelada'];
+const PLURAL={Realizada:'realizadas',Agendada:'agendadas',Atrasada:'atrasadas',Cancelada:'canceladas'};
+
+let visits=[],clients=[];
+let calY=new Date().getFullYear(),calM=new Date().getMonth(),calSel=null;
+let curScreen='dash',fsf='Todas',fff='Todos';
+let evId=null,ecId=null,cfs='Agendada',viewCId=null;
+let repAno='',repMes='Todos',fbOk=false;
+const _sd=localStorage.getItem('vp_dark');let dark=_sd===null?!!(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches):_sd==='1';
+const isD=()=>window.innerWidth>=768;
+
+/* ══ TOAST ═══════════════════════════════════════════════════ */
+function toast(msg,type='ok',dur=3000){
+  const icons={ok:'✓',err:'✕',warn:'⚠'};
+  const w=document.getElementById('toast-wrap');
+  const t=document.createElement('div');
+  t.className=`toast ${type}`;
+  const ic=document.createElement('span');ic.className='toast-icon';ic.textContent=icons[type]||'ℹ';
+  const tx=document.createElement('span');tx.textContent=msg;
+  t.append(ic,tx);
+  w.appendChild(t);
+  setTimeout(()=>{t.classList.add('out');setTimeout(()=>t.remove(),350);},dur);
+}
+
+/* ══ MODAL CONFIRM ═══════════════════════════════════════════ */
+let _modalCb=null;
+function modalConfirm(title,msg,cb,btnLabel='Excluir'){
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-msg').textContent=msg;
+  document.getElementById('modal-confirm').textContent=btnLabel;
+  document.getElementById('modal-overlay').classList.add('show');
+  _modalCb=cb;
+  document.getElementById('modal-confirm').onclick=()=>{modalClose();cb();};
+}
+function modalClose(){document.getElementById('modal-overlay').classList.remove('show');_modalCb=null;}
+
+/* ══ DARK MODE ═══════════════════════════════════════════════ */
+function applyDark(){
+  document.body.classList.toggle('dark',dark);
+  ['dark-btn','dark-btn-mob'].forEach(id=>{const b=document.getElementById(id);if(b)b.innerHTML=dark?ICON.sun:ICON.moon;b.setAttribute('aria-label',dark?'Usar tema claro':'Usar tema escuro');});
+}
+function toggleDark(){dark=!dark;localStorage.setItem('vp_dark',dark?'1':'0');applyDark();}
+applyDark();
+
+/* ══ SYNC DOTS ═══════════════════════════════════════════════ */
+function setSyncs(s){['sync-dot','sync-dot-mob','sync-dot-d'].forEach(id=>{const d=document.getElementById(id);if(d){d.className='sync-dot '+s;}});const tx=document.getElementById('sync-txt');if(tx)tx.textContent={ok:'Sincronizado',sy:'Salvando…',er:'Sem conexão'}[s]||'';}
+
+/* ══ FIREBASE ════════════════════════════════════════════════ */
+function o2a(o){return o?Object.values(o).filter(x=>x&&x.id!=null).sort((a,b)=>a.id-b.id):[];}
+function a2o(a){const o={};a.forEach(x=>o[x.id]=x);return o;}
+/* Toda gravação é feita por registro (visits/ID), nunca sobrescrevendo a coleção inteira */
+function fbOp(p){setSyncs('sy');return p.then(()=>setSyncs('ok')).catch(()=>{setSyncs('er');toast('Erro ao salvar — verifique a conexão','err');});}
+/* ID novo baseado na data/hora: dois aparelhos não geram o mesmo ID */
+function newId(list){let id=Date.now();while(list.some(x=>x.id===id))id++;return id;}
+
+/* ══ UTILS ═══════════════════════════════════════════════════ */
+function fd(d){if(!d)return'';const[y,m,dd]=d.split('-');return`${dd}/${m}/${y}`;}
+function ini(n){return(n||'?').split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase();}
+function pad(n){return String(n).padStart(2,'0');}
+function ymd(d){return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;}
+/* datas no fuso local (antes usava UTC e virava "amanhã" depois das 21h) */
+function td(){return ymd(new Date());}
+function tm(){const d=new Date();d.setDate(d.getDate()+1);return ymd(d);}
+function dayDiff(a,b){const[ya,ma,da]=a.split('-').map(Number),[yb,mb,dd]=b.split('-').map(Number);return Math.round((Date.UTC(yb,mb-1,dd)-Date.UTC(ya,ma-1,da))/86400000);}
+/* critério único: visita Agendada com data passada é Atrasada, em toda a tela */
+function effStatus(v){return v.status==='Agendada'&&v.data<td()?'Atrasada':v.status;}
+/* taxa de realização = realizadas ÷ visitas que já deveriam ter ocorrido (não conta agendadas futuras) */
+function taxaReal(list){const base=list.filter(v=>effStatus(v)!=='Agendada');return base.length?Math.round(base.filter(v=>v.status==='Realizada').length/base.length*100):0;}
+function greet(){const h=new Date().getHours();return h<12?'Bom dia':h<18?'Boa tarde':'Boa noite';}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function clrDates(){document.getElementById('v-df').value='';document.getElementById('v-dt').value='';renderVisits();}
+
+/* ══ DIAS SEM VISITA ═════════════════════════════════════════ */
+function diasSemVisita(clienteNome){
+  const cvs=visits.filter(v=>v.cliente===clienteNome&&v.status==='Realizada');
+  if(!cvs.length)return null; // nunca visitado
+  const last=cvs.sort((a,b)=>b.data.localeCompare(a.data))[0].data;
+  return Math.max(0,dayDiff(last,td()));
+}
+function diasBadge(clienteNome){
+  const d=diasSemVisita(clienteNome);
+  if(d===null)return`<span class="dias-badge dias-new">Nunca visitado</span>`;
+  if(d<=15)return`<span class="dias-badge dias-ok">Visitado há ${d}d</span>`;
+  if(d<=30)return`<span class="dias-badge dias-warn">${d}d sem visita</span>`;
+  return`<span class="dias-badge dias-danger">${d}d sem visita ⚠</span>`;
+}
+
+/* ══ NOTIFICAÇÕES ════════════════════════════════════════════ */
+function reqNotif(){try{if('Notification'in window&&Notification.permission==='default')Notification.requestPermission();}catch(e){}}
+function notify(title,body){
+  try{if('Notification'in window&&Notification.permission==='granted'){new Notification(title,{body});return true;}}catch(e){}
+  return false;
+}
+function checkNotifs(){
+  const t=td(),to=tm();
+  const tv=visits.filter(v=>v.data===t&&v.status==='Agendada');
+  const mv=visits.filter(v=>v.data===to&&v.status==='Agendada');
+  let al={};try{al=JSON.parse(localStorage.getItem('vp_al')||'{}');}catch(e){}
+  // guarda só os avisos de hoje/amanhã (antes o registro crescia para sempre)
+  const keep={};Object.keys(al).forEach(k=>{if(k==='t'+t||k==='m'+to||k==='t'+to)keep[k]=1;});al=keep;
+  if(tv.length&&!al['t'+t]&&notify('📅 Visitas hoje!',tv.map(v=>v.cliente).join(', ')))al['t'+t]=1;
+  if(mv.length&&!al['m'+to]&&notify('🔔 Visitas amanhã!',mv.map(v=>v.cliente).join(', ')))al['m'+to]=1;
+  try{localStorage.setItem('vp_al',JSON.stringify(al));}catch(e){}
+}
+
+/* ══ META MENSAL ═════════════════════════════════════════════ */
+let goal=parseInt(localStorage.getItem('vp_goal')||'0')||0;
+/* salva no Firebase (vale para todos os aparelhos); localStorage fica como reserva */
+function setGoal(v){goal=parseInt(v)||0;localStorage.setItem('vp_goal',goal||'');try{db.ref('config/metaMensal').set(goal).catch(()=>{});}catch(e){}if(curScreen==='dash')renderDash();}
+
+/* ══ INIT ════════════════════════════════════════════════════ */
+function initApp(){
+  let vr=false,cr=false;
+  const slow=setTimeout(()=>{const m=document.getElementById('loading-msg');if(m)m.textContent='Demorando para conectar… verifique a internet.';},12000);
+  function ck(){
+    if(!vr||!cr)return;
+    clearTimeout(slow);
+    document.getElementById('loading').style.display='none';
+    document.getElementById('app').style.display='flex';
+    const dt=document.getElementById('d-topbar');if(dt)dt.style.display=isD()?'flex':'none';
+    fbOk=true;reqNotif();
+    try{checkNotifs();}catch(e){}
+    renderDash();updHdr();
+  }
+  function readErr(){toast('Não foi possível ler os dados — verifique a conexão ou as permissões do banco','err',6000);setSyncs('er');}
+  db.ref('.info/connected').on('value',s=>{if(s.val())setSyncs('ok');else if(fbOk)setSyncs('er');});
+  db.ref('config/metaMensal').on('value',s=>{if(s.exists()){goal=parseInt(s.val())||0;localStorage.setItem('vp_goal',goal||'');if(fbOk&&curScreen==='dash')renderDash();}},()=>{});
+  db.ref('visits').on('value',snap=>{
+    const d=snap.val();
+    if(d)visits=o2a(d);
+    else if(!vr){visits=CONFIG.seedInicial?JSON.parse(JSON.stringify(IV)):[];if(visits.length)db.ref('visits').set(a2o(visits));}
+    else visits=[];
+    vr=true;updHdr();
+    if(fbOk){
+      try{checkNotifs();}catch(e){}
+      if(curScreen==='dash')renderDash();
+      if(curScreen==='visits')renderVisits();
+      if(curScreen==='report')renderReport();
+      if(curScreen==='cdetail'&&viewCId)showClient(viewCId);
+    }
+    ck();
+  },()=>{vr=true;readErr();ck();});
+  db.ref('clients').on('value',snap=>{
+    const d=snap.val();
+    if(d)clients=o2a(d);
+    else if(!cr){clients=CONFIG.seedInicial?JSON.parse(JSON.stringify(IC)):[];if(clients.length)db.ref('clients').set(a2o(clients));}
+    else clients=[];
+    cr=true;updHdr();
+    if(fbOk){
+      if(curScreen==='clients')renderClients();
+      if(curScreen==='cdetail'&&viewCId){if(clients.some(c=>c.id===viewCId))showClient(viewCId);else goTo('clients');}
+      if(curScreen==='dash')renderDash();
+    }
+    ck();
+  },()=>{cr=true;readErr();ck();});
+}
+function updHdr(){
+  const txt=`${visits.length} visitas, ${clients.length} clientes`;
+  ['sb-sub','mob-sub'].forEach(id=>{const e=document.getElementById(id);if(e)e.textContent=txt;});
+}
+
+/* ══ NAV ═════════════════════════════════════════════════════ */
+function goTo(screen){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('[data-tab]').forEach(b=>b.classList.remove('active'));
+  document.getElementById('s-'+screen).classList.add('active');
+  document.querySelectorAll(`[data-tab="${screen}"]`).forEach(b=>b.classList.add('active'));
+  curScreen=screen;viewCId=null;
+  const titles={dash:'Início',visits:'Visitas',form:'Nova Visita',report:'Relatório',clients:'Clientes',cform:'Clientes',cdetail:'Clientes'};
+  const pt=document.getElementById('d-page-title');if(pt)pt.textContent=titles[screen]||'';
+  if(screen==='dash')renderDash();
+  if(screen==='visits')renderVisits();
+  if(screen==='report')renderReport();
+  if(screen==='clients')renderClients(); // busca e filtro ficam como o usuário deixou
+}
+
+/* ══ QUICK STATUS CHANGE ═════════════════════════════════════ */
+function quickRealizar(id,ev){
+  ev&&ev.stopPropagation();
+  visits=visits.map(v=>v.id===id?{...v,status:'Realizada'}:v);
+  fbOp(db.ref('visits/'+id+'/status').set('Realizada'));
+  toast('✅ Marcada como Realizada!','ok');
+  renderVisits();
+  if(curScreen==='dash')renderDash();
+  
+}
+
+/* ══ DASHBOARD ═══════════════════════════════════════════════ */
+function relDay(d){const n=dayDiff(td(),d);return n===1?'amanhã':`em ${n} dias`;}
+function calNav(d){calM+=d;if(calM<0){calM=11;calY--;}if(calM>11){calM=0;calY++;}calSel=null;renderDash();}
+function calPick(ds){calSel=calSel===ds?null:ds;renderDash();}
+function newVisitOn(ds){renderVF(null,false,{cliente:'',data:ds});}
+function dchip(ds){const p=ds.split('-');return `<div class="datechip"><b>${+p[2]}</b><span>${MESES[+p[1]-1]}</span></div>`;}
+function rowVisit(v,right){return `<div class="rowf" onclick="editVisit(${v.id})">${dchip(v.data)}<div class="who"><b>${esc(v.cliente)}</b><span>${esc(v.atividade)}</span></div>${right||''}</div>`;}
+
+function diaryHtml(){
+  const t=td();
+  const dim=new Date(calY,calM+1,0).getDate(),lead=new Date(calY,calM,1).getDay();
+  const ym=`${calY}-${pad(calM+1)}`;
+  const mv=visits.filter(v=>v.data.startsWith(ym));
+  const byDay={};mv.forEach(v=>(byDay[v.data]=byDay[v.data]||[]).push(v));
+  const real=mv.filter(v=>v.status==='Realizada').length;
+  const pct=goal>0?Math.min(Math.round(real/goal*100),100):0;
+  const gcol=pct>=100?'var(--c-real)':pct>=70?'var(--c-atra)':'var(--c-canc)';
+  let cells='';
+  for(let i=0;i<lead;i++)cells+='<span class="cal-d empty"></span>';
+  for(let d=1;d<=dim;d++){
+    const ds=`${ym}-${pad(d)}`,vs=byDay[ds]||[],dow=(lead+d-1)%7;
+    const dots=vs.slice(0,4).map(v=>`<i class="d-${effStatus(v)}"></i>`).join('')+(vs.length>4?`<em class="cal-more">+${vs.length-4}</em>`:'');
+    cells+=`<button class="cal-d${dow===0||dow===6?' we':''}${ds===t?' today':''}${ds===calSel?' sel':''}" onclick="calPick('${ds}')" aria-pressed="${ds===calSel}" aria-label="${d} de ${MESES_L[calM]}, ${vs.length} ${vs.length===1?'visita':'visitas'}"><span>${d}</span><span class="cal-dots">${dots}</span></button>`;
+  }
+  let day='';
+  if(calSel){
+    const p=calSel.split('-'),vs=visits.filter(v=>v.data===calSel);
+    day=`<div class="day-box"><div class="h2">${+p[2]} de ${MESES_L[+p[1]-1]}</div>
+      ${vs.length?vs.map(v=>{const s=effStatus(v);return `<div class="rowf" onclick="editVisit(${v.id})"><div class="who"><b>${esc(v.cliente)}</b><span>${esc(v.atividade)}</span></div><span class="badge badge-${s}">${s}</span></div>`;}).join(''):'<div class="day-empty">Nenhuma visita neste dia.</div>'}
+      <button class="pill-solid" onclick="newVisitOn('${calSel}')">Agendar neste dia</button></div>`;
+  }
+  return `<section class="panel" aria-label="Calendário de visitas">
+    <div class="diary-top">
+      <div class="diary-month">${MESES_L[calM]} ${calY}</div>
+      <div class="diary-nav"><button class="icon-btn" onclick="calNav(-1)" aria-label="Mês anterior">${ICON.left}</button><button class="icon-btn" onclick="calNav(1)" aria-label="Próximo mês">${ICON.right}</button></div>
+    </div>
+    <div class="goal">
+      <div class="goal-txt"><b>${real}</b> ${real===1?'realizada':'realizadas'} no mês, meta <input class="goal-in" type="number" min="1" max="200" value="${goal||''}" placeholder="–" onchange="setGoal(this.value)" aria-label="Meta mensal de visitas"></div>
+      ${goal>0?`<div class="goal-bar"><div class="goal-track"><div class="goal-fill" style="width:${pct}%;background:${gcol}"></div></div><div class="goal-pct">${pct}%</div></div>`:''}
+    </div>
+    <div class="cal">${['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'].map(x=>`<div class="cal-h">${x}</div>`).join('')}${cells}</div>
+    <div class="legend">${ORDEM.map(s=>`<span><i class="d-${s}"></i>${s}</span>`).join('')}</div>
+    ${day}
+  </section>`;
+}
+
+function renderDash(){
+  const now=new Date(),t=td(),to=tm();
+  const first=(CONFIG.usuario||'').split(' ')[0];
+  const asc=(a,b)=>a.data.localeCompare(b.data);
+  const todayV=visits.filter(v=>v.data===t&&v.status==='Agendada');
+  const tomV=visits.filter(v=>v.data===to&&v.status==='Agendada');
+  const late=visits.filter(v=>effStatus(v)==='Atrasada');
+  const upcoming=visits.filter(v=>v.data>t&&v.status==='Agendada').sort(asc);
+  const nextV=upcoming[0];
+  const recent=visits.filter(v=>v.status==='Realizada').sort((a,b)=>b.data.localeCompare(a.data)).slice(0,4);
+  const silent=clients.filter(c=>{if(c.ativo===false)return false;const d=diasSemVisita(c.nome);return d!==null&&d>=30;}).sort((a,b)=>diasSemVisita(b.nome)-diasSemVisita(a.nome)).slice(0,5);
+
+  const head=`<header class="dash-head"><div class="dash-date">${now.toLocaleDateString('pt-BR',{weekday:'long',day:'numeric',month:'long'})}</div><h1 class="dash-hello">${greet()}, ${esc(first)}</h1></header>`;
+
+  const tTitle=todayV.length?(todayV.length===1?'1 visita hoje':`${todayV.length} visitas hoje`):'Nenhuma visita hoje';
+  const tSub=todayV.length?(tomV.length?`Amanhã: ${tomV.length} ${tomV.length===1?'visita':'visitas'}`:'Nada agendado para amanhã'):(nextV?`Próxima: ${esc(nextV.cliente)}, ${relDay(nextV.data)}`:'Não há visitas agendadas à frente');
+  const hero=`<section class="panel panel-ink" aria-label="Hoje">
+    <div class="today-title">${tTitle}</div>
+    <div class="today-sub">${tSub}</div>
+    ${todayV.length?`<div class="today-list">${todayV.map(v=>`<div class="today-row" onclick="editVisit(${v.id})"><div class="who"><b>${esc(v.cliente)}</b><span>${esc(v.atividade)}</span></div><button class="today-done" onclick="quickRealizar(${v.id},event)">Marcar realizada</button></div>`).join('')}</div>`:''}
+    <div class="today-foot"><button class="pill-hivis" onclick="newVisit()">Agendar visita</button>${late.length?`<button class="pill-late" onclick="showVisits('Atrasada')">${late.length} ${late.length===1?'atrasada':'atrasadas'}</button>`:''}</div>
+  </section>`;
+
+  // últimos 12 meses
+  const chartData=[];
+  for(let i=11;i>=0;i--){
+    const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const ym=`${d.getFullYear()}-${pad(d.getMonth()+1)}`;
+    const mv=visits.filter(v=>v.data.startsWith(ym));
+    const o={label:MESES[d.getMonth()],total:mv.length,cur:i===0};
+    ORDEM.forEach(s=>o[s]=mv.filter(v=>effStatus(v)===s).length);
+    chartData.push(o);
+  }
+  const W=isD()?560:330,gap=isD()?10:6,n=12,bw=Math.floor((W-gap*(n-1))/n),plot=112,top=20,H=top+plot+20;
+  const maxV=Math.max(...chartData.map(d=>d.total),goal,1);
+  let bars='';
+  chartData.forEach((d,i)=>{
+    const x=i*(bw+gap);let y=top+plot;
+    ORDEM.forEach(s=>{const h=d[s]>0?Math.max(Math.round(d[s]/maxV*plot),4):0;if(h){y-=h;bars+=`<rect class="b-${s}" x="${x}" y="${y}" width="${bw}" height="${h}" rx="4"/>`;y-=1.5;}});
+    if(d.total>0)bars+=`<text class="ch-val" x="${x+bw/2}" y="${y-3}" text-anchor="middle">${d.total}</text>`;
+    else bars+=`<rect class="b-empty" x="${x}" y="${top+plot-2}" width="${bw}" height="2" rx="1"/>`;
+    bars+=`<text class="ch-lbl${d.cur?' ch-cur':''}" x="${x+bw/2}" y="${top+plot+14}" text-anchor="middle">${d.label}</text><title>${d.label}: ${d.total} ${d.total===1?'visita':'visitas'}</title>`;
+  });
+  if(goal>0){const gy=top+plot-Math.round(goal/maxV*plot);bars+=`<line class="ch-goal" x1="0" x2="${W}" y1="${gy}" y2="${gy}"/><text class="ch-goal-t" x="${W}" y="${gy-4}" text-anchor="end">meta ${goal}</text>`;}
+  const win=ORDEM.map(s=>chartData.reduce((a,d)=>a+d[s],0));
+  const fromS=ymd(new Date(now.getFullYear(),now.getMonth()-11,1)),toS=ymd(new Date(now.getFullYear(),now.getMonth()+1,0));
+  const taxa12=taxaReal(visits.filter(v=>v.data>=fromS&&v.data<=toS));
+  const twelve=`<section class="panel" aria-label="Últimos 12 meses">
+    <div class="h2">Últimos 12 meses</div>
+    <div class="h2-sub">${taxa12}% das visitas que já deveriam ter ocorrido foram realizadas</div>
+    <div class="ribbon" role="img" aria-label="Proporção de visitas por status">${win.map((c,i)=>c?`<i class="rb-${ORDEM[i]}" style="flex:${c}"></i>`:'').join('')}</div>
+    <div class="rib-legend">${win.map((c,i)=>`<span><i class="d-${ORDEM[i]}"></i><b>${c}</b> ${PLURAL[ORDEM[i]]}</span>`).join('')}</div>
+    <div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Visitas por mês nos últimos 12 meses">${bars}</svg></div>
+  </section>`;
+
+  const sec=(title,sub,body)=>`<section class="rail-sec"><h2 class="h2">${title}</h2>${sub?`<div class="h2-sub">${sub}</div>`:''}${body}</section>`;
+  const upH=upcoming.slice(0,5).map(v=>rowVisit(v)).join('')||'<div class="muted-line">Nada agendado à frente.</div>';
+  const silH=silent.map(c=>`<div class="rowf" onclick="showClient(${c.id})"><div class="who"><b>${esc(c.nome)}</b><span class="warn">${diasSemVisita(c.nome)} dias sem visita</span></div><button class="pill-small" onclick="event.stopPropagation();newVisitFor(${c.id})">Agendar</button></div>`).join('')||'<div class="muted-line">Nenhum cliente ativo esquecido.</div>';
+  const recH=recent.map(v=>rowVisit(v)).join('')||'<div class="muted-line">Nenhuma visita realizada ainda.</div>';
+  const secUp=sec('Próximas visitas','',upH);
+  const secSil=sec('Sem visita há 30 dias ou mais','Clientes ativos que precisam de contato',silH);
+  const secRec=sec('Últimas realizadas','',recH);
+
+  document.getElementById('s-dash').innerHTML=isD()
+    ?`<div class="dash-wrap">${head}<div class="dash-grid"><div class="dash-main">${hero}${diaryHtml()}${twelve}</div><div class="dash-rail">${secUp}${secSil}${secRec}</div></div></div>`
+    :`<div class="dash-m">${head}${hero}${diaryHtml()}${secUp}${secSil}${twelve}${secRec}</div>`;
+}
+
+/* ══ VISITS ══════════════════════════════════════════════════ */
+function renderVisits(){
+  const sf=document.getElementById('v-sf');
+  if(!sf.innerHTML){['Todas',...STS].forEach(s=>{const b=document.createElement('button');b.className='fpill'+(s==='Todas'?' on':'');b.textContent=s;b.dataset.s=s;b.onclick=()=>{fsf=s;document.querySelectorAll('#v-sf .fpill').forEach(x=>x.classList.toggle('on',x.dataset.s===s));renderVisits();};sf.appendChild(b);});}
+  const ff=document.getElementById('v-ff');
+  if(!ff.innerHTML){['Todos',...EMPS].forEach(e=>{const b=document.createElement('button');b.className='fpill'+(e==='Todos'?' on':'');b.textContent=e;b.dataset.e=e;b.onclick=()=>{fff=e;document.querySelectorAll('#v-ff .fpill').forEach(x=>x.classList.toggle('on',x.dataset.e===e));renderVisits();};ff.appendChild(b);});}
+  document.querySelectorAll('#v-sf .fpill').forEach(x=>x.classList.toggle('on',x.dataset.s===fsf));
+  const q=(document.getElementById('v-search').value||'').toLowerCase();
+  const df=document.getElementById('v-df').value,dt=document.getElementById('v-dt').value;
+  const sortBy=(document.getElementById('v-sort')||{value:'date-desc'}).value;
+  const sorters={
+    'date-desc':(a,b)=>b.data.localeCompare(a.data),
+    'date-asc':(a,b)=>a.data.localeCompare(b.data),
+    'client-az':(a,b)=>a.cliente.localeCompare(b.cliente),
+    'client-za':(a,b)=>b.cliente.localeCompare(a.cliente),
+  };
+  const filtered=visits.filter(v=>(fsf==='Todas'||effStatus(v)===fsf)&&(fff==='Todos'||v.funcionario===fff)&&(!q||v.cliente.toLowerCase().includes(q)||v.atividade.toLowerCase().includes(q)||(v.obs||'').toLowerCase().includes(q))&&(!df||v.data>=df)&&(!dt||v.data<=dt)).sort(sorters[sortBy]||sorters['date-desc']);
+  const body=document.getElementById('v-body');
+  if(isD()){
+    const byCols={};STS.forEach(s=>byCols[s]=[]);
+    filtered.forEach(v=>{const es=effStatus(v);byCols[es]&&byCols[es].push(v);});
+    const cc={Agendada:{hdr:'var(--blue)',cnt:'var(--blue-bg)',b:'var(--blue-b)'},Realizada:{hdr:'var(--grc)',cnt:'var(--grbg)',b:'var(--grbb)'},Cancelada:{hdr:'var(--red)',cnt:'var(--red-bg)',b:'var(--red-b)'},Atrasada:{hdr:'var(--amb)',cnt:'var(--amb-bg)',b:'var(--amb-b)'}};
+    let html=`<div style="padding:8px 28px 6px;font-size:12px;color:var(--muted)">${filtered.length} visita(s)</div><div class="kanban-board" style="padding:0 28px 28px;">`;
+    STS.forEach(s=>{
+      const c=cc[s],cols=byCols[s];
+      html+=`<div class="kb-col"><div class="kb-col-header"><span class="kb-col-title">${s}</span><span class="kb-count" style="background:${c.cnt};color:${c.hdr};border-color:${c.b}">${cols.length}</span></div>`;
+      if(!cols.length)html+=`<div style="font-size:12px;color:var(--muted);text-align:center;padding:20px 0">Nenhuma</div>`;
+      cols.forEach(v=>{
+        const obsH=v.obs?`<div class="kb-obs">${esc(v.obs)}</div>`:'';
+        const qaBtn=v.status!=='Realizada'?`<button class="qa-btn" onclick="quickRealizar(${v.id},event)" title="Marcar como Realizada">✓ Realizada</button>`:'';
+        const isOverdue=v.status==='Agendada'&&v.data<td();
+        const overdueTag=isOverdue?`<span class="overdue-tag">Vencida</span>`:'';
+        html+=`<div class="kb-card${isOverdue?' overdue':''}" onclick="editVisit(${v.id})">
+          <div class="kb-client">${esc(v.cliente)}${overdueTag}</div>
+          <div class="kb-act">${esc(v.atividade)}</div>
+          ${obsH}
+          <div class="kb-meta">${qaBtn}<span style="font-size:10px;color:${isOverdue?'var(--amb)':'var(--muted)'};font-weight:${isOverdue?'600':'400'}">${fd(v.data)}</span></div>
+        </div>`;
+      });
+      html+=`</div>`;
+    });
+    html+=`</div>`;
+    body.innerHTML=html;
+  } else {
+    let html=`<div style="font-size:11px;color:var(--muted);padding:0 0 8px">${filtered.length} visita(s)</div>`;
+    if(!filtered.length)html+='<div class="empty">Nenhuma visita encontrada</div>';
+    else filtered.forEach(v=>{
+      const obsH=v.obs?`<div style="font-size:11px;color:var(--muted);margin-top:7px;padding:5px 8px;background:var(--inp);border-radius:6px;border-left:2px solid var(--gm)">${esc(v.obs)}</div>`:'';
+      html+=`<div class="mvisit-card s-${effStatus(v)}" onclick="editVisit(${v.id})">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;gap:8px"><div style="font-weight:500;font-size:14px;color:var(--txt);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(v.cliente)}</div><span class="badge badge-${effStatus(v)}">${effStatus(v)}</span></div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">${esc(v.atividade)}</div>
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="font-size:11px;color:var(--muted)">${esc(v.funcionario)}</span>
+          <span style="font-size:11px;color:var(--muted)">${fd(v.data)}</span>
+        </div>
+        ${obsH}
+        ${v.status!=='Realizada'?`<div style="margin-top:8px"><button class="qa-btn" style="font-size:11px;padding:4px 10px;" onclick="quickRealizar(${v.id},event)">✓ Marcar como Realizada</button></div>`:''}
+      </div>`;
+    });
+    body.innerHTML=`<div class="lwrap">${html}</div>`;
+  }
+}
+
+function showVisits(s){fsf=s||'Todas';goTo('visits');}
+/* ══ VISIT FORM ══════════════════════════════════════════════ */
+function renderVF(v,isDup=false,prefill=null){
+  curScreen='form';
+  evId=isDup?null:v?v.id:null;
+  cfs=v?v.status:'Agendada';
+  const isE=!!v&&!isDup;
+  const curC=(v||prefill)?(v||prefill).cliente:'';
+  // só clientes ativos (+ o da visita, se for inativo/removido) e sem cliente pré-escolhido por engano
+  const co=(curC?'':'<option value="" selected>Selecione o cliente…</option>')
+    +(curC&&!clients.some(c=>c.nome===curC)?`<option value="${esc(curC)}" selected>${esc(curC)} (empresa removida)</option>`:'')
+    +clients.filter(c=>c.ativo!==false||c.nome===curC).sort((a,b)=>a.nome.localeCompare(b.nome)).map(c=>`<option value="${esc(c.nome)}"${curC===c.nome?' selected':''}>${esc(c.nome)}</option>`).join('');
+  const ao=ACTS.map(a=>`<option${v&&v.atividade===a?' selected':''}>${esc(a)}</option>`).join('');
+  const eo=EMPS.map(e=>`<option${v&&v.funcionario===e?' selected':''}>${esc(e)}</option>`).join('');
+  const ph=STS.map(s=>`<button type="button" class="spill${s===cfs?' a-'+s:''}" onclick="setFS('${s}')">${s}</button>`).join('');
+  const w=isD()?'d-form-wrap':'';
+  document.getElementById('s-form').innerHTML=`
+    <div class="${w}">
+      <div style="font-size:18px;font-weight:600;color:var(--txt);margin-bottom:16px">${isDup?'Duplicar Visita':isE?'Editar Visita':'Nova Visita'}</div>
+      <label class="lbl">Data</label><input type="date" id="f-data" class="inp" value="${isDup?td():v?v.data:(prefill&&prefill.data)||td()}">
+      <label class="lbl">Funcionário</label><select id="f-func" class="inp">${eo}</select>
+      <label class="lbl">Cliente</label><select id="f-client" class="inp">${co}</select>
+      <label class="lbl">Atividade</label><select id="f-atv" class="inp">${ao}</select>
+      <label class="lbl">Status</label><div class="spills" id="form-pills">${ph}</div>
+      ${(isE&&v.status==='Agendada'&&v.data<td())?'<div class="next-chip" style="margin-top:8px;background:var(--amb-bg);border-color:var(--amb-b);color:var(--amb)">A data já passou — marque como Realizada, Cancelada ou reagende.</div>':''}
+      <label class="lbl">Observações</label><textarea id="f-obs" class="inp" rows="3" placeholder="Anotações sobre a visita...">${esc(v?v.obs:'')}</textarea>
+      <div style="margin-top:20px">
+        <button type="button" class="btn btn-primary" onclick="saveVisit()">${isE?'Salvar Alterações':isDup?'Registrar Cópia':'Registrar Visita'}</button>
+        ${isE?`<button type="button" class="btn btn-dup" onclick="renderVF(visits.find(x=>x.id===${v.id}),true)">⧉ Duplicar esta visita</button>`:''}
+        ${isE?`<button type="button" class="btn btn-danger" onclick="delVisit()">Excluir Visita</button>`:''}
+        <button type="button" class="btn btn-ghost" onclick="goTo('visits')">Cancelar</button>
+      </div>
+    </div>`;
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('s-form').classList.add('active');
+  document.querySelectorAll('[data-tab]').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('[data-tab="form"]').forEach(b=>b.classList.add('active'));
+  const pt=document.getElementById('d-page-title');if(pt)pt.textContent=isE?'Editar Visita':'Nova Visita';
+  setTimeout(()=>document.getElementById('f-data')?.focus(),100);
+}
+function setFS(s){cfs=s;document.getElementById('form-pills').innerHTML=STS.map(st=>`<button type="button" class="spill${st===s?' a-'+st:''}" onclick="setFS('${st}')">${st}</button>`).join('');}
+function newVisit(){evId=null;renderVF(null);}
+function editVisit(id){renderVF(visits.find(x=>x.id===id));}
+function saveVisit(){
+  const data=document.getElementById('f-data').value;
+  const funcionario=document.getElementById('f-func').value;
+  const cliente=document.getElementById('f-client').value;
+  const atividade=document.getElementById('f-atv').value;
+  const obs=document.getElementById('f-obs').value;
+  if(!data||!cliente){toast('Preencha a data e o cliente','err');return;}
+  const wasEdit=!!evId;
+  const prev=wasEdit?(visits.find(v=>v.id===evId)||{id:evId}):null;
+  const rec=wasEdit?{...prev,data,funcionario,cliente,atividade,status:cfs,obs}:{id:newId(visits),data,funcionario,cliente,atividade,status:cfs,obs};
+  visits=wasEdit?visits.map(v=>v.id===rec.id?rec:v).concat(visits.some(v=>v.id===rec.id)?[]:[rec]):[...visits,rec];
+  fbOp(db.ref('visits/'+rec.id).set(rec));
+  toast(wasEdit?'Visita atualizada!':'Visita registrada!','ok');
+  evId=null;goTo('visits');
+}
+function delVisit(){
+  const idDel=evId;
+  modalConfirm('Excluir visita','Tem certeza? Esta ação não pode ser desfeita.',()=>{
+    visits=visits.filter(v=>v.id!==idDel);
+    fbOp(db.ref('visits/'+idDel).remove());
+    toast('Visita excluída','warn');evId=null;goTo('visits');
+  });
+}
+
+/* ══ CLIENTS ════════════════════════════════════════════════ */
+/* ══ TOGGLE ATIVO/INATIVO ════════════════════════════════════ */
+let cAtivoFilter='ativos'; // 'todos' | 'ativos' | 'inativos'
+function toggleAtivo(id,ev){
+  ev&&ev.stopPropagation();
+  const c=clients.find(x=>x.id===id);if(!c)return;
+  const novoEstado=c.ativo===false?true:false;
+  // Atualiza localmente primeiro (resposta imediata na tela)
+  clients=clients.map(x=>x.id===id?{...x,ativo:novoEstado}:x);
+  // Salva apenas o campo 'ativo' deste cliente (atômico — evita sobrescrita)
+  setSyncs('sy');
+  db.ref('clients/'+id+'/ativo').set(novoEstado)
+    .then(()=>setSyncs('ok'))
+    .catch(()=>{setSyncs('er');toast('Erro ao salvar — verifique a conexão','err');});
+  toast(novoEstado?`${c.nome} marcado como Ativo`:`${c.nome} marcado como Inativo`,novoEstado?'ok':'warn');
+  if(curScreen==='cdetail'&&viewCId)showClient(viewCId);else renderClients();
+}
+
+function renderClients(){
+  // Build ativo filter pills once
+  const af=document.getElementById('c-ativo-filters');
+  if(af&&!af.innerHTML){
+    [['ativos','● Ativos'],['todos','Todos'],['inativos','○ Inativos']].forEach(([val,lbl])=>{
+      const b=document.createElement('button');
+      b.className='fpill'+(val===cAtivoFilter?' on':'');
+      b.textContent=lbl;b.dataset.v=val;
+      b.onclick=()=>{cAtivoFilter=val;document.querySelectorAll('#c-ativo-filters .fpill').forEach(x=>x.classList.toggle('on',x.dataset.v===val));renderClients();};
+      af.appendChild(b);
+    });
+  }
+
+  const q=(document.getElementById('c-search').value||'').toLowerCase();
+  const allFiltered=clients.filter(c=>!q||c.nome.toLowerCase().includes(q)||(c.responsavel||'').toLowerCase().includes(q));
+  const filtered=allFiltered.filter(c=>{
+    const isAtivo=c.ativo!==false;
+    if(cAtivoFilter==='ativos')return isAtivo;
+    if(cAtivoFilter==='inativos')return!isAtivo;
+    return true;
+  }).sort((a,b)=>{
+    // Ativos primeiro, depois por nome
+    const aA=a.ativo!==false,bA=b.ativo!==false;
+    if(aA&&!bA)return-1;if(!aA&&bA)return 1;
+    return a.nome.localeCompare(b.nome);
+  });
+  const ativos=clients.filter(c=>c.ativo!==false).length;
+  const inativos=clients.length-ativos;
+  document.getElementById('c-count').textContent=`${filtered.length} exibido(s) · ${ativos} ativo(s) · ${inativos} inativo(s)`;
+  const body=document.getElementById('c-body');
+  if(isD()){
+    let html='<div class="c-grid">';
+    filtered.forEach(c=>{
+      const isAtivo=c.ativo!==false;
+      const hasWA=c.telefone&&c.telefone.replace(/\D/g,'').length>=10;
+      const vCount=visits.filter(v=>v.cliente===c.nome).length;
+      const nextV=visits.filter(v=>v.cliente===c.nome&&v.data>=td()&&v.status==='Agendada').sort((a,b)=>a.data.localeCompare(b.data))[0];
+      html+=`<div class="c-card${isAtivo?'':' inativo'}" onclick="showClient(${c.id})">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <div class="av" style="width:42px;height:42px;background:${isAtivo?'var(--gl)':'var(--inp)'};color:${isAtivo?'var(--gd)':'var(--muted)'};font-size:14px">${ini(c.nome)}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:500;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.nome)}</div>
+            <div style="font-size:12px;color:var(--muted)">${esc(c.responsavel||'—')}</div>
+          </div>
+          <button class="ativo-pill ${isAtivo?'on':'off'}" onclick="toggleAtivo(${c.id},event)" title="${isAtivo?'Marcar como Inativo':'Marcar como Ativo'}">${isAtivo?'● Ativo':'○ Inativo'}</button>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:4px">
+          ${diasBadge(c.nome)}
+          ${nextV?`<span style="font-size:10px;color:var(--blue)">📅 ${fd(nextV.data)}</span>`:`<span style="font-size:10px;color:var(--muted)">${vCount} visita(s)</span>`}
+          ${hasWA?`<span onclick="event.stopPropagation();openWA('${String(c.telefone||'').replace(/\D/g,'')}')" style="font-size:10px;color:#25D366;cursor:pointer;font-weight:600">WA</span>`:''}
+        </div>
+        ${c.obs?`<div style="font-size:11px;color:var(--muted);margin-top:7px;padding:4px 8px;background:var(--inp);border-radius:6px">${esc(c.obs)}</div>`:''}
+      </div>`;
+    });
+    html+='</div>';
+    body.innerHTML=html;
+  } else {
+    let html='';
+    filtered.forEach(c=>{
+      const isAtivo=c.ativo!==false;
+      const hasWA=c.telefone&&c.telefone.replace(/\D/g,'').length>=10;
+      html+=`<div class="row-item${isAtivo?'':' inativo'}" onclick="showClient(${c.id})">
+        <div class="av" style="width:40px;height:40px;background:${isAtivo?'var(--gl)':'var(--inp)'};color:${isAtivo?'var(--gd)':'var(--muted)'};font-size:12px">${ini(c.nome)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:500;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.nome)}</div>
+          <div style="display:flex;align-items:center;gap:6px;margin-top:2px">${diasBadge(c.nome)}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button class="ativo-pill ${isAtivo?'on':'off'}" onclick="toggleAtivo(${c.id},event)">${isAtivo?'● Ativo':'○ Inativo'}</button>
+          ${hasWA?`<span onclick="event.stopPropagation();openWA('${String(c.telefone||'').replace(/\D/g,'')}')" style="font-size:11px;color:#25D366;font-weight:600">WA</span>`:''}
+          <span style="color:var(--muted);font-size:18px">›</span>
+        </div>
+      </div>`;
+    });
+    body.innerHTML=`<div style="padding:0 16px">${html||'<div class="empty">Nenhum cliente encontrado</div>'}</div>`;
+  }
+}
+
+function showClient(id){
+  const c=clients.find(x=>x.id===id);if(!c)return;
+  const isAtivo=c.ativo!==false;
+  const hasWA=c.telefone&&c.telefone.replace(/\D/g,'').length>=10;
+  const fields=[['Responsável',c.responsavel],['Telefone',c.telefone],['E-mail',c.email],['Obs.',c.obs]].filter(([,v])=>v);
+  const fieldsH=fields.map(([k,v])=>`<div style="display:flex;padding:11px 16px;border-bottom:1px solid var(--bdr)"><span style="font-size:12px;color:var(--muted);width:90px;flex-shrink:0">${k}</span><span style="font-size:13px;color:var(--txt)">${esc(v)}</span></div>`).join('');
+  const t=td();
+  const nextV=visits.filter(v=>v.cliente===c.nome&&v.data>=t&&v.status==='Agendada').sort((a,b)=>a.data.localeCompare(b.data))[0];
+  const hist=visits.filter(v=>v.cliente===c.nome).sort((a,b)=>b.data.localeCompare(a.data));
+  const dias=diasSemVisita(c.nome);
+  let histH='';
+  if(hist.length){hist.forEach(v=>{histH+=`<div class="hist-card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px"><span style="font-size:12px;font-weight:500;color:var(--txt)">${esc(v.atividade)}</span><span class="badge badge-${effStatus(v)}" style="font-size:10px;padding:1px 7px">${effStatus(v)}</span></div><div style="font-size:11px;color:var(--muted)">${fd(v.data)} · ${esc(v.funcionario)}</div>${v.obs?`<div style="font-size:11px;color:var(--muted);margin-top:3px;font-style:italic">${esc(v.obs)}</div>`:''}</div>`;});}
+  else histH='<div style="font-size:12px;color:var(--muted);padding:8px 0">Nenhuma visita registrada</div>';
+  const waBtn=hasWA?`<button class="btn btn-wa" onclick="openWA('${String(c.telefone||'').replace(/\D/g,'')}')"><svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>WhatsApp — ${esc(c.responsavel||c.nome)}</button>`:'';
+  const w=isD()?'d-form-wrap':'';
+  viewCId=id;curScreen='cdetail';
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('s-cdetail').classList.add('active');
+  document.querySelectorAll('[data-tab]').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('[data-tab="clients"]').forEach(b=>b.classList.add('active'));
+  const pt=document.getElementById('d-page-title');if(pt)pt.textContent='Clientes';
+  document.getElementById('s-cdetail').innerHTML=`
+    <div class="${w}">
+      <button class="back-btn" onclick="goTo('clients')">← Voltar</button>
+      <div style="display:flex;align-items:center;gap:14px;margin-bottom:12px">
+        <div class="av" style="width:54px;height:54px;font-size:18px;background:${isAtivo?'var(--gl)':'var(--inp)'};color:${isAtivo?'var(--gd)':'var(--muted)'}">${ini(c.nome)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <div style="font-size:18px;font-weight:600;color:var(--txt)">${esc(c.nome)}</div>
+            <button class="ativo-pill ${isAtivo?'on':'off'}" onclick="toggleAtivo(${c.id},event)">${isAtivo?'● Ativo':'○ Inativo'}</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:4px">${diasBadge(c.nome)}${dias!==null?`<span style="font-size:11px;color:var(--muted)">· ${hist.filter(v=>v.status==='Realizada').length} visita(s) realizada(s)</span>`:''}</div>
+        </div>
+      </div>
+      ${!isAtivo?`<div style="background:var(--inp);border:1px solid var(--bdr);border-radius:8px;padding:8px 12px;font-size:12px;color:var(--muted);margin-bottom:12px;">⚫ Cliente marcado como inativo</div>`:''}
+      ${nextV?`<div class="next-chip">📅 Próxima visita: <strong>${fd(nextV.data)}</strong> — ${esc(nextV.atividade)}</div>`:''}
+      <div class="card" style="padding:0;overflow:hidden;margin-bottom:12px">${fieldsH||'<div style="padding:12px 16px;font-size:13px;color:var(--muted)">Sem dados cadastrados</div>'}</div>
+      ${waBtn}
+      <button class="btn btn-dup" onclick="newVisitFor(${c.id})">⊕ Nova visita para esta empresa</button>
+      <button class="btn" style="background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-b);" onclick="editClient(${c.id})">✎ Editar empresa</button>
+      <div class="sec" style="margin-top:8px">Histórico de visitas (${hist.length})</div>
+      ${histH}
+    </div>`;
+}
+
+function newVisitFor(id){
+  const c=clients.find(x=>x.id===id);
+  renderVF(null,false,{cliente:c?c.nome:''});
+}
+
+/* ══ CLIENT FORM ════════════════════════════════════════════ */
+function newClient(){ecId=null;renderCF(null);}
+function editClient(id){ecId=id;renderCF(clients.find(x=>x.id===id));}
+function renderCF(c){
+  ecId=c?c.id:null;const isE=!!c;curScreen='cform';
+  const w=isD()?'d-form-wrap':'';
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById('s-cform').classList.add('active');
+  document.querySelectorAll('[data-tab]').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('[data-tab="clients"]').forEach(b=>b.classList.add('active'));
+  const pt=document.getElementById('d-page-title');if(pt)pt.textContent=isE?'Editar Empresa':'Nova Empresa';
+  document.getElementById('s-cform').innerHTML=`
+    <div class="${w}">
+      <button class="back-btn" onclick="goTo('clients')">← Voltar para Clientes</button>
+      <div style="font-size:18px;font-weight:600;color:var(--txt);margin-bottom:4px">${isE?'Editar Empresa':'Nova Empresa'}</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px">Preencha os dados da empresa</div>
+      <label class="lbl">Nome da empresa <span style="color:var(--red)">*</span></label>
+      <input type="text" id="cf-nome" class="inp" placeholder="Ex: Vale S11D" value="${esc(c?c.nome:'')}">
+      <label class="lbl">Responsável / Contato</label>
+      <input type="text" id="cf-resp" class="inp" placeholder="Ex: João Silva" value="${esc(c?c.responsavel:'')}">
+      <label class="lbl">Telefone / WhatsApp</label>
+      <input type="tel" id="cf-tel" class="inp" placeholder="Ex: 94991234567" value="${esc(c?c.telefone:'')}">
+      <label class="lbl">E-mail</label>
+      <input type="email" id="cf-email" class="inp" placeholder="Ex: contato@empresa.com" value="${esc(c?c.email:'')}">
+      <label class="lbl">Observação (cargo, setor...)</label>
+      <input type="text" id="cf-obs" class="inp" placeholder="Ex: Comprador, Engenheiro..." value="${esc(c?c.obs:'')}">
+      <div style="margin-top:20px">
+        <button type="button" class="btn btn-primary" onclick="saveClient()">${isE?'Salvar Alterações':'Cadastrar Empresa'}</button>
+        ${isE?`<button type="button" class="btn btn-danger" onclick="delClient()">Excluir Empresa</button>`:''}
+        <button type="button" class="btn btn-ghost" onclick="goTo('clients')">Cancelar</button>
+      </div>
+    </div>`;
+  setTimeout(()=>document.getElementById('cf-nome')?.focus(),100);
+}
+function saveClient(){
+  const nome=(document.getElementById('cf-nome').value||'').trim();
+  if(!nome){toast('O nome da empresa é obrigatório','err');return;}
+  if(clients.some(c=>c.id!==ecId&&c.nome.trim().toLowerCase()===nome.toLowerCase())){toast('Já existe uma empresa com esse nome','err');return;}
+  const existing=clients.find(c=>c.id===ecId);
+  const cid=ecId||newId(clients);
+  const obj={id:cid,nome,responsavel:(document.getElementById('cf-resp').value||'').trim(),telefone:(document.getElementById('cf-tel').value||'').trim(),email:(document.getElementById('cf-email').value||'').trim(),obs:(document.getElementById('cf-obs').value||'').trim(),ativo:existing?existing.ativo!==false:true};
+  // Gravação atômica: a empresa e, se o nome mudou, o nome em todas as visitas dela (o histórico não se perde)
+  const updates={};updates['clients/'+cid]=obj;
+  let moved=0;
+  if(existing&&existing.nome!==nome){
+    visits.forEach(v=>{if(v.cliente===existing.nome){updates['visits/'+v.id+'/cliente']=nome;moved++;}});
+    visits=visits.map(v=>v.cliente===existing.nome?{...v,cliente:nome}:v);
+  }
+  clients=ecId?clients.map(c=>c.id===ecId?obj:c):[...clients,obj];
+  fbOp(db.ref().update(updates));
+  toast(ecId?(moved?`Empresa atualizada — ${moved} visita(s) acompanharam o novo nome`:'Empresa atualizada!'):'Empresa cadastrada!','ok');
+  ecId=null;
+  goTo('clients');
+}
+function delClient(){
+  const idToDel=ecId;
+  const cDel=clients.find(c=>c.id===idToDel);
+  const nv=cDel?visits.filter(v=>v.cliente===cDel.nome).length:0;
+  modalConfirm('Excluir empresa',nv?`${nv} visita(s) continuam no histórico, mas ficam sem empresa cadastrada. Para só parar de visitar, marque a empresa como Inativa.`:'Tem certeza? Esta ação não pode ser desfeita.',()=>{
+    clients=clients.filter(c=>c.id!==idToDel);
+    // Remove atômico — só este cliente
+    setSyncs('sy');
+    db.ref('clients/'+idToDel).remove()
+      .then(()=>setSyncs('ok'))
+      .catch(()=>{setSyncs('er');toast('Erro ao excluir','err');});
+    toast('Empresa excluída','warn');ecId=null;goTo('clients');
+  });
+}
+
+/* ══ REPORT ═════════════════════════════════════════════════ */
+function repRows(){
+  const anos=[...new Set(visits.map(v=>v.data.slice(0,4)))].sort((a,b)=>b-a);
+  if(!repAno&&anos.length)repAno=anos[0];
+  const mi=MESES.indexOf(repMes);
+  return visits.filter(v=>v.data.slice(0,4)===repAno&&(repMes==='Todos'||v.data.slice(5,7)===pad(mi+1))).sort((a,b)=>b.data.localeCompare(a.data));
+}
+function renderReport(){
+  const anos=[...new Set(visits.map(v=>v.data.slice(0,4)))].sort((a,b)=>b-a);
+  if(!repAno&&anos.length)repAno=anos[0];
+  const filtered=repRows();
+  const byS={};filtered.forEach(v=>{const s=effStatus(v);byS[s]=(byS[s]||0)+1;});
+  const byC={};filtered.forEach(v=>byC[v.cliente]=(byC[v.cliente]||0)+1);
+  const topC=Object.entries(byC).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const taxa=taxaReal(filtered);const ocorridas=filtered.filter(v=>effStatus(v)!=='Agendada').length;
+  // Activity breakdown
+  const byA={};filtered.forEach(v=>byA[v.atividade]=(byA[v.atividade]||0)+1);
+  const topA=Object.entries(byA).sort((a,b)=>b[1]-a[1]);
+  const maxA=topA.length?topA[0][1]:1;
+  const actH=topA.map(([nome,qt])=>{
+    const pct=Math.round((qt/Math.max(filtered.length,1))*100);
+    const barPct=Math.round((qt/maxA)*100);
+    return`<div style="margin-bottom:9px"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:12px;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:72%">${esc(nome)}</span><span style="font-size:11px;color:var(--muted)">${qt} (${pct}%)</span></div><div class="prog-wrap"><div class="prog-bar" style="width:${barPct}%;background:var(--blue)"></div></div></div>`;
+  }).join('');
+  const anoOpts=anos.map(a=>`<option${a===repAno?' selected':''}>${a}</option>`).join('');
+  const mesOpts=['Todos',...MESES].map(m=>`<option${m===repMes?' selected':''}>${m}</option>`).join('');
+  const stH=[['Agendada','var(--blue-bg)','var(--blue)','var(--blue-b)'],['Realizada','var(--grbg)','var(--grc)','var(--grbb)'],['Cancelada','var(--red-bg)','var(--red)','var(--red-b)'],['Atrasada','var(--amb-bg)','var(--amb)','var(--amb-b)']].map(([s,bg,c,b])=>`<div style="background:${bg};border:1px solid ${b};border-radius:10px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center"><span style="font-size:12px;color:${c}">${s}</span><span style="font-size:22px;font-weight:700;color:${c}">${byS[s]||0}</span></div>`).join('');
+  const topH=topC.map(([nome,qt])=>{const pct=Math.round((qt/filtered.length)*100);return`<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;margin-bottom:3px"><span style="font-size:13px;color:var(--txt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%">${esc(nome)}</span><span style="font-size:12px;color:var(--muted)">${qt} (${pct}%)</span></div><div class="prog-wrap"><div class="prog-bar" style="width:${pct}%"></div></div></div>`;}).join('');
+  const w=isD()?'style="max-width:700px"':'';
+  document.getElementById('s-report').innerHTML=`
+    <div ${w}>
+      <div style="font-size:20px;font-weight:600;color:var(--txt);margin-bottom:16px">Relatório de Visitas</div>
+      <div style="display:flex;gap:10px;margin-bottom:18px">
+        <select class="inp" style="flex:1" onchange="repAno=this.value;renderReport()">${anoOpts}</select>
+        <select class="inp" style="flex:1" onchange="repMes=this.value;renderReport()">${mesOpts}</select>
+      </div>
+      <div class="card" style="margin-bottom:8px;background:var(--grbg);border-color:var(--grbb)">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-size:13px;color:var(--grc)">Taxa de realização</div><div style="font-size:36px;font-weight:700;color:var(--grc)">${taxa}%</div></div>
+          <div style="text-align:right"><div style="font-size:12px;color:var(--grc)">${filtered.length} visitas no período</div><div style="font-size:11px;color:var(--grc);opacity:.8;margin-top:2px">base: ${ocorridas} já ocorridas</div></div>
+        </div>
+        <div class="prog-wrap" style="margin-top:10px"><div class="prog-bar" style="width:${taxa}%"></div></div>
+      </div>
+      <div class="card" style="margin-bottom:14px">
+        <div style="font-size:13px;font-weight:500;color:var(--txt);margin-bottom:12px">Por status</div>
+        <div style="display:grid;grid-template-columns:repeat(${isD()?4:2},1fr);gap:8px">${stH}</div>
+      </div>
+      ${topC.length?`<div class="card" style="margin-bottom:16px"><div style="font-size:13px;font-weight:500;color:var(--txt);margin-bottom:12px">Top clientes no período</div>${topH}</div>`:''}
+      ${actH?`<div class="card" style="margin-bottom:16px"><div style="font-size:13px;font-weight:500;color:var(--txt);margin-bottom:12px">Por tipo de atividade</div>${actH}</div>`:''}
+      <button class="btn btn-exp" onclick="exportCSV()">↓ &nbsp;Exportar CSV (${filtered.length} visitas)</button>
+    </div>`;
+}
+function csvCell(s){let t=String(s==null?'':s);if(/^[=+\-@\t\r]/.test(t))t="'"+t;return '"'+t.replace(/"/g,'""')+'"';}
+function exportCSV(){
+  const rows=repRows();
+  // ponto e vírgula: o Excel em português abre em colunas; aspas duplicadas preservam o texto das observações
+  const head=['Data','Funcionário','Cliente','Atividade','Status','Observações'].join(';');
+  const body=rows.map(v=>[fd(v.data),v.funcionario,v.cliente,v.atividade,effStatus(v),v.obs||''].map(csvCell).join(';')).join('\r\n');
+  const blob=new Blob(['\uFEFF'+head+'\r\n'+body],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download=`visitas_${repAno}${repMes!=='Todos'?'_'+repMes:''}.csv`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+  toast(`CSV com ${rows.length} visitas exportado!`,'ok');
+}
+
+function openWA(tel){window.open(`https://wa.me/55${tel.replace(/\D/g,'')}`, '_blank');}
+
+let resT;window.addEventListener('resize',()=>{clearTimeout(resT);resT=setTimeout(()=>{if(!fbOk)return;const dt=document.getElementById('d-topbar');if(dt)dt.style.display=isD()?'flex':'none';if(curScreen==='dash')renderDash();if(curScreen==='visits')renderVisits();if(curScreen==='clients')renderClients();if(curScreen==='cdetail'&&viewCId)showClient(viewCId);},220);});
+
+/* Esc fecha a confirmação (e não descarta o formulário por trás) */
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('modal-overlay').classList.contains('show')){modalClose();e.stopImmediatePropagation();}});
+/* ══ KEYBOARD SHORTCUTS (desktop) ════════════════════════════ */
+document.addEventListener('keydown',e=>{
+  if(!fbOk||!isD())return;
+  // Don't fire when typing in inputs
+  const tag=(e.target.tagName||'').toLowerCase();
+  if(['input','textarea','select'].includes(tag))return;
+  if(e.key==='n'||e.key==='N'){e.preventDefault();newVisit();}
+  else if(e.key==='/')  {e.preventDefault();const s=document.getElementById('v-search');if(s){goTo('visits');setTimeout(()=>s.focus(),80);}}
+  else if(e.key==='1')  goTo('dash');
+  else if(e.key==='2')  goTo('visits');
+  else if(e.key==='3')  goTo('report');
+  else if(e.key==='4')  goTo('clients');
+  else if(e.key==='Escape'){if(curScreen==='form'||curScreen==='cform')goTo('visits');}
+});
+
+document.title=CONFIG.appName;
+document.querySelectorAll('.brand-name').forEach(e=>e.textContent=CONFIG.appName);
+document.querySelectorAll('.av-me').forEach(e=>e.textContent=ini(CONFIG.usuario));
+buildNav();applyDark();
+initApp();
+</script>
+</body>
+</html>
